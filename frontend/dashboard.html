@@ -7,6 +7,84 @@
     <title>Dashboard | Academia</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 1rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .item-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            position: relative;
+        }
+
+        .domain-tag {
+            background: var(--secondary);
+            color: var(--text-main);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin-right: 5px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .domain-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+    </style>
 </head>
 
 <body style="display: block;">
@@ -19,58 +97,280 @@
                     <p style="color: var(--text-dim); font-size: 0.9rem;">Student Access</p>
                 </div>
             </div>
-            <button class="btn btn-outline" style="width: auto; margin: 0;" onclick="logout()">Logout</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary header-btn" onclick="window.location.href='index.html'">Home</button>
+                <button class="btn btn-primary header-btn" onclick="logout()"
+                    style="background: #ff4d4d; border-color: #ff4d4d;">Logout</button>
+            </div>
         </header>
 
-        <section class="search-card animate-fade">
+        <nav class="nav-tabs animate-fade">
+            <div class="nav-link active" onclick="switchTab('profile')">Profile</div>
+            <div class="nav-link" onclick="switchTab('projects')">Projects</div>
+            <div class="nav-link" onclick="switchTab('certifications')">Certifications</div>
+        </nav>
+
+        <!-- Profile Section -->
+        <section id="profile-section" class="search-card animate-fade">
             <h1 class="title">My Student Profile</h1>
             <p class="subtitle">Enter your Register Number to view or update your profile</p>
 
             <div style="max-width: 400px; margin: 0 auto;">
                 <div class="form-group">
-                    <input type="text" id="regNoInput" placeholder="Enter Register Number (e.g. 7140231...)"
-                        style="text-align: center;">
+                    <input type="text" id="regNoInput" placeholder="Enter Register Number" style="text-align: center;">
                 </div>
-                <button class="btn btn-primary" onclick="checkProfile()">View My Details</button>
+                <!-- Error msg for unauthorized -->
+                <div id="unauthorizedMsg" style="color: #ff4d4d; margin-top: 10px;" class="hidden"></div>
+
+                <button class="btn btn-primary" onclick="checkProfile()" style="margin-top: 10px;">View My
+                    Details</button>
+            </div>
+
+            <!-- No Profile Message -->
+            <div id="noProfileMsg" class="hidden text-center animate-fade" style="margin-top: 2rem;">
+                <div class="glass-card" style="max-width: 100%;">
+                    <p>No profile data found for this register number.</p>
+                    <button class="btn btn-primary" style="margin-top: 1rem;"
+                        onclick="redirectToProfile('create')">Store My Details</button>
+                </div>
             </div>
         </section>
 
-        <!-- No Profile Modal/State -->
-        <div id="noProfileMsg" class="hidden text-center animate-fade" style="margin-top: 2rem;">
-            <div class="glass-card" style="max-width: 100%;">
-                <p>No profile data found for this register number.</p>
-                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="redirectToProfile('create')">Create /
-                    Store My Details</button>
+        <!-- Projects Section -->
+        <section id="projects-section" class="hidden animate-fade">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="title" style="text-align: left; margin: 0;">My Projects</h2>
+                <button class="btn btn-primary" style="width: auto;" onclick="openModal('project')">+ Add
+                    Project</button>
+            </div>
+            <div id="projectList" class="card-grid">
+                <!-- Projects will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Certifications Section -->
+        <section id="certifications-section" class="hidden animate-fade">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="title" style="text-align: left; margin: 0;">My Certifications</h2>
+                <button class="btn btn-primary" style="width: auto;" onclick="openModal('cert')">+ Add
+                    Certification</button>
+            </div>
+            <div id="certList" class="card-grid">
+                <!-- Certifications will be loaded here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Modals -->
+    <div id="itemModal" class="modal">
+        <div class="glass-card" style="max-width: 500px;">
+            <h3 id="modalTitle" class="title" style="font-size: 1.5rem;">Add New</h3>
+            <div class="form-group">
+                <label>Description / Title</label>
+                <input type="text" id="itemDesc" placeholder="e.g. AI Hand Gesture Recognition">
+            </div>
+            <div class="form-group">
+                <label>Domains (Select Multiple)</label>
+                <div id="domainList" class="domain-selection-grid">
+                    <!-- Domains will be populated here -->
+                </div>
+            </div>
+            <div class="form-group">
+                <label id="linkLabel">Link (GitHub / Certificate)</label>
+                <input type="text" id="itemLink" placeholder="https://...">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveItem()">Save Entry</button>
             </div>
         </div>
     </div>
 
     <script>
+        const API_URL = "http://127.0.0.1:8000";
+        const domains = [
+            "ai", "ml", "data science", "cyber", "cloud", "devops", "mlops",
+            "full stack", "frontend", "backend", "mobile app development",
+            "game development", "ui/ux", "iot", "blockchain", "ar/vr", "big data", "nlp"
+        ];
+        let currentModalType = '';
+
         document.getElementById('welcomeTxt').innerText = `Welcome, ${localStorage.getItem('username') || 'Student'}!`;
         document.getElementById('avatarTxt').innerText = (localStorage.getItem('username') || 'U')[0].toUpperCase();
 
+        const savedReg = localStorage.getItem('tempRegNo');
+        if (savedReg) {
+            const inputEl = document.getElementById('regNoInput');
+            if (inputEl) inputEl.value = savedReg;
+        }
+
         async function checkProfile() {
+            const userId = localStorage.getItem('user_id');
             const regNo = document.getElementById('regNoInput').value;
+            if (!userId) {
+                alert("Please login first.");
+                return logout();
+            }
             if (!regNo) {
                 alert("Please enter a register number");
                 return;
             }
 
             localStorage.setItem('tempRegNo', regNo);
+            const msgEl = document.getElementById('unauthorizedMsg');
+            msgEl.classList.add('hidden');
+            document.getElementById('noProfileMsg').classList.add('hidden');
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/student/profile/${regNo}`);
+                // Pass user_id to restrict cross-profile access
+                const response = await fetch(`${API_URL}/student/profile/${regNo}?user_id=${userId}`);
+
                 if (response.ok) {
-                    // Profile exists
                     window.location.href = `profile.html?reg=${regNo}`;
                 } else if (response.status === 404) {
-                    // Profile doesn't exist
                     document.getElementById('noProfileMsg').classList.remove('hidden');
+                } else if (response.status === 403) {
+                    const data = await response.json();
+                    msgEl.innerText = data.detail || "Restricted: You cannot view someone else's profile.";
+                    msgEl.classList.remove('hidden');
                 } else {
                     alert("Error checking profile");
                 }
             } catch (err) {
                 alert("Server error connecting to backend");
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-link[onclick="switchTab('${tab}')"]`).classList.add('active');
+
+            document.getElementById('profile-section').classList.add('hidden');
+            document.getElementById('projects-section').classList.add('hidden');
+            document.getElementById('certifications-section').classList.add('hidden');
+
+            document.getElementById(`${tab}-section`).classList.remove('hidden');
+
+            if (tab === 'projects') loadItems('projects');
+            if (tab === 'certifications') loadItems('certifications');
+        }
+
+        function openModal(type) {
+            const regNo = localStorage.getItem('tempRegNo');
+            if (!regNo) {
+                alert("Please enter your Register Number on the Profile tab first so we know who you are!");
+                switchTab('profile');
+                return;
+            }
+
+            currentModalType = type;
+            document.getElementById('itemModal').classList.add('active');
+            document.getElementById('modalTitle').innerText = type === 'project' ? 'Add New Project' : 'Add New Certification';
+            document.getElementById('linkLabel').innerText = type === 'project' ? 'GitHub Repository Link' : 'Certificate URL';
+            document.getElementById('itemDesc').value = '';
+            document.getElementById('itemLink').value = '';
+
+            const domainContainer = document.getElementById('domainList');
+            domainContainer.innerHTML = domains.map(d => `
+                <label class="filter-checkbox">
+                    <input type="checkbox" name="domain" value="${d}"> ${d.toUpperCase()}
+                </label>
+            `).join('');
+        }
+
+        function closeModal() {
+            document.getElementById('itemModal').classList.remove('active');
+        }
+
+        async function saveItem() {
+            const regNo = localStorage.getItem('tempRegNo');
+            const desc = document.getElementById('itemDesc').value;
+            const link = document.getElementById('itemLink').value;
+            const selectedDomains = Array.from(document.querySelectorAll('input[name="domain"]:checked')).map(cb => cb.value);
+
+            if (!desc || selectedDomains.length === 0) {
+                alert("Please provide a description and at least one domain.");
+                return;
+            }
+
+            const path = currentModalType === 'project' ? 'projects' : 'certifications';
+            const payload = {
+                description: desc,
+                domains: selectedDomains,
+                [currentModalType === 'project' ? 'github_link' : 'certificate_link']: link
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/student/${regNo}/${path}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    loadItems(path);
+                } else {
+                    alert("Failed to save entry since no profile details stored , try storing profile details first then you can add projects or certifications.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function loadItems(path) {
+            const regNo = localStorage.getItem('tempRegNo');
+            if (!regNo) return;
+
+            try {
+                const response = await fetch(`${API_URL}/student/${regNo}/${path}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    renderItems(data, path === 'projects' ? 'projectList' : 'certList');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderItems(items, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = items.length === 0 ? '<p style="color: var(--text-dim); text-align: center; grid-column: 1/-1;">No entries found. Add your first one!</p>' : '';
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item-card animate-fade';
+                const link = item.github_link || item.certificate_link;
+                div.innerHTML = `
+                    <button onclick="deleteItem('${containerId === 'projectList' ? 'projects' : 'certifications'}', ${item.id})" style="position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.1); color: #ff4444; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">&times;</button>
+                    <h4 style="margin-bottom: 0.5rem; padding-right: 20px;">${item.description}</h4>
+                    <div>
+                        ${item.domains.map(d => `<span class="domain-tag">${d}</span>`).join('')}
+                    </div>
+                    <div style="margin-top: 1rem; font-size: 0.85rem;">
+                        ${link ? `<a href="${link}" target="_blank" style="color: var(--primary);">View Link</a>` : '<span style="color: var(--text-dim);">No Link</span>'}
+                        <span style="float: right; color: var(--text-dim);">${new Date(item.created_at).toLocaleDateString()}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function deleteItem(path, id) {
+            if (!confirm("Are you sure you want to delete this entry?")) return;
+
+            try {
+                const response = await fetch(`${API_URL}/student/${path}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadItems(path);
+                } else {
+                    alert("Failed to delete entry.");
+                }
+            } catch (err) {
+                console.error(err);
             }
         }
 

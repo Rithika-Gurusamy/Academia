@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard | Academia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .notification-sidebar {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            height: calc(100vh - 4rem);
+            position: sticky;
+            top: 2rem;
+            overflow-y: auto;
+        }
+
+        /* Domain Multi-Select Grid */
+        .domain-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 12px;
+            background: white;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            margin-top: 5px;
+        }
+
+        .domain-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .domain-checkbox-item:hover {
+            background: var(--bg-dark);
+        }
+
+        .domain-checkbox-item input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--primary);
+        }
+
+        .activity-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.85rem;
+            transition: background 0.2s;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .activity-item:hover {
+            background: rgba(8, 203, 0, 0.05);
+        }
+
+        .activity-item.new {
+            border-left: 3px solid var(--primary);
+            background: rgba(8, 203, 0, 0.02);
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 5px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .notification-sidebar {
+                height: auto;
+                position: static;
+            }
+        }
+    </style>
+</head>
+
+<body style="display: block;">
+    <div class="main-layout animate-fade">
+        <div class="left-content">
+            <header class="header">
+                <div class="user-profile">
+                    <div class="avatar" id="userAvatar">F</div>
+                    <div>
+                        <h2 id="welcomeText">Welcome, Faculty</h2>
+                        <p class="subtitle" style="margin: 0; text-align: left;">Faculty Portal</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary header-btn" onclick="window.location.href='index.html'">Home</button>
+                    <button class="btn btn-primary header-btn" onclick="logout()"
+                        style="background: #ff4d4d; border-color: #ff4d4d;">Logout</button>
+                </div>
+            </header>
+
+            <div class="search-card">
+                <h3 class="title" style="font-size: 1.5rem;">Student Directory</h3>
+                <p class="subtitle">Quick search by name or register number</p>
+
+                <div class="form-group" style="max-width: 400px; margin: 1.5rem auto 0;">
+                    <input type="text" id="studentSearch" placeholder="Search by name or register number..."
+                        oninput="localSearch()">
+                </div>
+            </div>
+
+            <div class="filter-card">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">Advanced Filters</h4>
+                <div class="filter-grid" id="filterForm">
+                    <!-- Reg No Range -->
+                    <div class="filter-group">
+                        <label>From Register No</label>
+                        <input type="text" id="filter_from_reg" placeholder="Starting range">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Register No</label>
+                        <input type="text" id="filter_to_reg" placeholder="Ending range">
+                    </div>
+
+                    <!-- Gender -->
+                    <div class="filter-group">
+                        <label>Gender</label>
+                        <select id="filter_gender">
+                            <option value="">All Genders</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+
+                    <!-- Scholar Type -->
+                    <div class="filter-group">
+                        <label>Scholar Type</label>
+                        <select id="filter_scholar_type">
+                            <option value="">All Types</option>
+                            <option value="Day Scholar">Day Scholar</option>
+                            <option value="Hosteller">Hosteller</option>
+                        </select>
+                    </div>
+
+                    <!-- Boolean Checkboxes -->
+                    <div class="checkbox-filters" style="margin-bottom: 1rem; border-top: none; padding-top: 0;">
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_first_graduate"> First Graduate
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_has_projects"> Has Projects
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_has_certifications"> Has Certifications
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_sc_st_scholarship"> SC/ST Scholarship
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_pudhumai_pen"> Pudhumai Pen
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_mbc_bc_scholarship"> MBC/BC Scholarship
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_pmss_scholarship"> PMSS Scholarship
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_category_7_5_scholarship"> 7.5 Reservation
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_mudhalvan_scholarship"> Nan Mudhalvan
+                        </label>
+                        <label class="filter-checkbox" style="font-weight: 600; color: var(--text-main);">
+                            <input type="checkbox" id="filter_other_scholarship"> Other Scholarship
+                        </label>
+                    </div>
+
+                    <!-- Project Domain -->
+                    <div class="filter-group"
+                        style="grid-column: span 2; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                        <label>Project Domains (Select Multiple)</label>
+                        <div id="filter_project_domain_list" class="domain-selection-grid">
+                            <!-- Dynamic population -->
+                        </div>
+                    </div>
+
+                    <!-- Cert Domain -->
+                    <div class="filter-group" style="grid-column: span 2;">
+                        <label>Cert Domains (Select Multiple)</label>
+                        <div id="filter_cert_domain_list" class="domain-selection-grid">
+                            <!-- Dynamic population -->
+                        </div>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn btn-outline" style="width: auto;" onclick="resetFilters()">Reset All</button>
+                        <button class="btn btn-primary" style="width: auto;" onclick="applyFilters()">Apply
+                            Filters</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="student-list-container">
+                <table class="student-table">
+                    <thead>
+                        <tr>
+                            <th>Register No</th>
+                            <th>Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <aside class="notification-sidebar">
+            <h4 style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+                Recent Activity
+                <span id="activityCount" class="badge"
+                    style="background: var(--primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">0</span>
+            </h4>
+            <div id="activityLogs">
+                <p style="color: var(--text-dim); text-align: center; font-size: 0.8rem;">No new activities</p>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Activity Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="glass-card" style="max-width: 450px;">
+            <h3 id="detailTitle" class="title" style="font-size: 1.5rem;">Activity Detail</h3>
+            <div id="detailContent" style="margin: 1.5rem 0; line-height: 1.6;">
+                <!-- Content injected here -->
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline" onclick="closeDetailModal()">Close</button>
+                <button class="btn btn-primary" id="viewProfileBtn">See Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        const domains = [
+            "ai", "ml", "data science", "cyber", "cloud", "devops", "mlops",
+            "full stack", "frontend", "backend", "mobile app development",
+            "game development", "ui/ux", "iot", "blockchain", "ar/vr", "big data", "nlp"
+        ];
+        let allStudents = [];
+
+        window.onload = async () => {
+            const username = localStorage.getItem('username');
+            const role = localStorage.getItem('role');
+
+            if (!username || role !== 'faculty') {
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById('welcomeText').innerText = `Welcome, ${username}`;
+            document.getElementById('userAvatar').innerText = username[0].toUpperCase();
+
+            populateDomainFilters();
+            await loadStudents();
+            startPolling();
+        };
+
+        function populateDomainFilters() {
+            const pList = document.getElementById('filter_project_domain_list');
+            const cList = document.getElementById('filter_cert_domain_list');
+            if (!pList || !cList) return;
+
+            pList.innerHTML = '';
+            cList.innerHTML = '';
+
+            domains.forEach(d => {
+                const pItem = `
+                    <label class="domain-checkbox-item">
+                        <input type="checkbox" name="p_domain" value="${d}" onchange="updateDomainSelectionStyle(this)">
+                        <span>${d.toUpperCase()}</span>
+                    </label>
+                `;
+                const cItem = `
+                    <label class="domain-checkbox-item">
+                        <input type="checkbox" name="c_domain" value="${d}" onchange="updateDomainSelectionStyle(this)">
+                        <span>${d.toUpperCase()}</span>
+                    </label>
+                `;
+                pList.innerHTML += pItem;
+                cList.innerHTML += cItem;
+            });
+        }
+
+        function updateDomainSelectionStyle(el) {
+            if (el.checked) {
+                el.parentElement.style.background = 'var(--accent-glow)';
+                el.parentElement.style.borderColor = 'var(--primary)';
+            } else {
+                el.parentElement.style.background = 'white';
+                el.parentElement.style.borderColor = 'transparent';
+            }
+        }
+
+        async function loadStudents(params = "") {
+            try {
+                const response = await fetch(`${API_URL}/student/list${params}`);
+                if (response.ok) {
+                    allStudents = await response.json();
+                    renderStudents(allStudents);
+                }
+            } catch (err) {
+                console.error("Error fetching students", err);
+            }
+        }
+
+        function applyFilters() {
+            try {
+                const formData = new URLSearchParams();
+
+                const inputs = [
+                    { id: 'filter_from_reg', param: 'from_reg' },
+                    { id: 'filter_to_reg', param: 'to_reg' },
+                    { id: 'filter_gender', param: 'gender' },
+                    { id: 'filter_scholar_type', param: 'scholar_type' }
+                ];
+
+                inputs.forEach(item => {
+                    const el = document.getElementById(item.id);
+                    if (el && el.value) formData.append(item.param, el.value);
+                });
+
+                const checkboxes = [
+                    'first_graduate', 'sc_st_scholarship', 'pudhumai_pen',
+                    'mbc_bc_scholarship', 'pmss_scholarship', 'category_7_5_scholarship',
+                    'mudhalvan_scholarship', 'other_scholarship', 'has_projects', 'has_certifications'
+                ];
+
+                checkboxes.forEach(id => {
+                    const el = document.getElementById(`filter_${id}`);
+                    if (el && el.checked) formData.append(id, 'true');
+                });
+
+                // Handle Multi-select Domains
+                document.querySelectorAll('input[name="p_domain"]:checked').forEach(el => {
+                    formData.append('project_domain', el.value);
+                });
+                document.querySelectorAll('input[name="c_domain"]:checked').forEach(el => {
+                    formData.append('cert_domain', el.value);
+                });
+
+                const queryString = formData.toString() ? `?${formData.toString()}` : "";
+                loadStudents(queryString);
+            } catch (err) {
+                console.error("Error applying filters:", err);
+                alert("An error occurred while applying filters. Check console for details.");
+            }
+        }
+
+        async function startPolling() {
+            setInterval(fetchLogs, 5000); // 5 seconds
+            fetchLogs();
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch(`${API_URL}/faculty/activity-logs`);
+                if (response.ok) {
+                    const logs = await response.json();
+                    renderLogs(logs);
+                }
+            } catch (err) {
+                console.error("Polling error", err);
+            }
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('activityLogs');
+            document.getElementById('activityCount').innerText = logs.length;
+
+            if (logs.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; font-size: 0.8rem;">No new activities</p>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="activity-item new" style="position: relative;">
+                    <div onclick="showDetail(${JSON.stringify(log).replace(/"/g, '&quot;')})">
+                        <strong>${log.student_name}</strong> added a ${log.activity_type === 'project_added' ? 'Project' : 'Certification'}.
+                        <div class="activity-time">${new Date(log.created_at).toLocaleTimeString()} · ${log.register_no}</div>
+                    </div>
+                    <button onclick="dismissLog(${log.id})" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function showDetail(log) {
+            const modal = document.getElementById('detailModal');
+            const content = document.getElementById('detailContent');
+            const viewBtn = document.getElementById('viewProfileBtn');
+
+            content.innerHTML = `
+                <p><strong>Student:</strong> ${log.student_name} (${log.register_no})</p>
+                <p><strong>Type:</strong> ${log.activity_type === 'project_added' ? 'New Project' : 'New Certification'}</p>
+                <p><strong>Description:</strong> ${log.description || 'N/A'}</p>
+                <p><strong>Domains:</strong> ${log.domains ? log.domains.join(', ').toUpperCase() : 'N/A'}</p>
+                ${log.link ? `<p><strong>Link:</strong> <a href="${log.link}" target="_blank" style="color: var(--primary);">View Attachment</a></p>` : ''}
+            `;
+
+            viewBtn.onclick = () => {
+                window.location.href = `profile.html?reg=${log.register_no}`;
+            };
+
+            modal.classList.add('active');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        async function dismissLog(id) {
+            try {
+                const response = await fetch(`${API_URL}/faculty/activity-logs/${id}/seen`, { method: 'POST' });
+                if (response.ok) {
+                    fetchLogs(); // Refresh list
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function resetFilters() {
+            const inputs = document.querySelectorAll('#filterForm input, #filterForm select');
+            inputs.forEach(el => {
+                if (el.type === 'checkbox') el.checked = false;
+                else el.value = "";
+            });
+            // Also reset domain checkboxes
+            document.querySelectorAll('input[name="p_domain"], input[name="c_domain"]').forEach(el => {
+                el.checked = false;
+            });
+            loadStudents();
+        }
+
+        function localSearch() {
+            const query = document.getElementById('studentSearch').value.toLowerCase();
+            const filtered = allStudents.filter(s =>
+                s.name?.toLowerCase().includes(query) ||
+                s.register_no?.toLowerCase().includes(query)
+            );
+            renderStudents(filtered);
+        }
+
+        function renderStudents(students) {
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
+
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">No students found matching these filters.</td></tr>';
+                return;
+            }
+
+            students.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${student.register_no}</td>
+                    <td>${student.name || 'N/A'}</td>
+                    <td>
+                        <a class="action-link" onclick="viewStudent('${student.register_no}')">View Profile</a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getScholarshipStatus(s) {
+            const types = [];
+            if (s.sc_st_scholarship) types.push("SC/ST");
+            if (s.mbc_bc_scholarship) types.push("MBC/BC");
+            if (s.pmss_scholarship) types.push("PMSS");
+            if (s.pudhumai_pen) types.push("Pudhumai Pen");
+            if (s.other_scholarship) types.push(s.other_scholarship_name || "Other");
+            return types.length > 0 ? types.join(", ") : "None";
+        }
+
+        function viewStudent(regNo) {
+            window.location.href = `profile.html?reg=${regNo}`;
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+
+</html>

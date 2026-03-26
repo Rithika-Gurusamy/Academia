@@ -1,14 +1,15 @@
 :root {
-    --primary: #6366f1;
-    --primary-hover: #4f46e5;
-    --secondary: #ec4899;
-    --accent: #8b5cf6;
-    --bg-dark: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.7);
-    --text-main: #f8fafc;
-    --text-dim: #94a3b8;
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    --primary: #08CB00;
+    --primary-hover: #07ac00;
+    --secondary: #AEEA94;
+    --accent: #E4FF30;
+    --bg-dark: #f0f7ed;
+    --bg-card: rgba(255, 255, 255, 0.85);
+    --text-main: #061a00;
+    --text-dim: #2d4a1e;
+    --glass-border: rgba(8, 203, 0, 0.15);
+    --glass-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(174, 234, 148, 0.1));
+    --accent-glow: rgba(8, 203, 0, 0.1);
 }
 
 * {
@@ -21,14 +22,24 @@
 body {
     background-color: var(--bg-dark);
     background-image:
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, rgba(8, 203, 0, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(228, 255, 48, 0.2) 0px, transparent 50%);
     color: var(--text-main);
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow-x: hidden;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 1);
+    padding: 10px 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(8, 203, 0, 0.1);
 }
 
 .glass-card {
@@ -54,10 +65,7 @@ body {
     font-weight: 700;
     margin-bottom: 0.5rem;
     text-align: center;
-    background: linear-gradient(to right, #818cf8, #f472b6);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #07ac00; /* Darker primary green for better contrast on white */
 }
 
 .subtitle {
@@ -82,10 +90,10 @@ input,
 select {
     width: 100%;
     padding: 0.8rem 1rem;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 1);
+    border: 1px solid rgba(8, 203, 0, 0.2);
     border-radius: 12px;
-    color: white;
+    color: var(--text-main);
     font-size: 1rem;
     outline: none;
     transition: all 0.2s;
@@ -95,6 +103,27 @@ input:focus,
 select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+}
+
+.password-toggle:hover {
+    transform: scale(1.2);
+    color: var(--primary);
 }
 
 .btn {
@@ -113,7 +142,7 @@ select:focus {
 }
 
 .btn-primary {
-    background: linear-gradient(to right, var(--primary), var(--accent));
+    background: var(--primary);
     color: white;
 }
 
@@ -126,17 +155,27 @@ select:focus {
     background: transparent;
     border: 1px solid var(--primary);
     color: var(--primary);
-    margin-top: 1rem;
 }
 
 .btn-outline:hover {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(8, 203, 0, 0.05);
+}
+
+.header-btn {
+    min-width: 100px;
+    height: 42px;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
 }
 
 .tabs {
     display: flex;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(255, 255, 255, 1);
     padding: 0.3rem;
+    border: 1px solid rgba(8, 203, 0, 0.1);
     border-radius: 14px;
     margin-bottom: 2rem;
 }
@@ -149,6 +188,7 @@ select:focus {
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
+    color: var(--text-dim);
     transition: all 0.2s;
 }
 
@@ -258,4 +298,168 @@ select:focus {
 
 .animate-fade {
     animation: fadeIn 0.4s ease forwards;
+}
+
+.recovery-links {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+}
+
+.recovery-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.recovery-links a:hover {
+    color: var(--primary);
+}
+
+.recovery-desc {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.timer {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #ff4d4d;
+    font-weight: 500;
+}
+
+.username-display {
+    background: rgba(8, 203, 0, 0.05);
+    padding: 2rem;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 2rem;
+    border: 1px dashed var(--primary);
+}
+
+.username-display p {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+}
+
+.username-display h2 {
+    color: var(--primary);
+    letter-spacing: 2px;
+}
+
+/* Faculty Dashboard Filters */
+.filter-card {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    animation: fadeIn 0.4s ease;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 0.8rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+}
+
+.checkbox-filters {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.filter-checkbox input {
+    width: auto;
+}
+
+.filter-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Faculty Table Styles */
+.student-list-container {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-top: 2rem;
+    border: 1px solid var(--glass-border);
+    overflow-x: auto;
+}
+
+.student-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.student-table th {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--glass-border);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.student-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-main);
+}
+
+.student-table tr:hover {
+    background: rgba(8, 203, 0, 0.05);
+}
+
+.action-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.action-link:hover {
+    text-decoration: underline;
 }

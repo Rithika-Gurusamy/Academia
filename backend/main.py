@@ -1,15 +1,49 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import JSONB
 from database import SessionLocal, engine
 import models
 import schemas
-from typing import Optional
+from typing import Optional, List
 from models import User
 from models import Student
 from datetime import date
-from auth import hash_password
-from auth import verify_password
+from auth import hash_password, verify_password
 from fastapi.middleware.cors import CORSMiddleware
+import random
+import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Email Configuration - Replace with your real credentials
+SENDER_EMAIL = os.getenv("EMAIL_USER")
+SENDER_PASSWORD = os.getenv("EMAIL_PASS")
+
+
+def send_email(subject, recipient, body):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print(f"Successfully sent email to {recipient}")
+        return True
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to send email: {e}")
+        return False
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -41,8 +75,13 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
+    existing_email = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
     new_user = models.User(
         username=user.username,
+        email=user.email,
         password_hash=hash_password(user.password),
         role=user.role
     )
@@ -52,195 +91,414 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "Account created"}
 @app.post("/login")
-def login(username: str, password: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == username).first()
+def login(username: str, password: str, role: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == username, User.role == role).first()
 
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid credentials or role")
 
     if not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    register_no = None
+    if role == "student":
+        student = db.query(models.Student).filter(models.Student.user_id == user.id).first()
+        if student:
+            register_no = student.register_no
+
     return {
         "message": "Login successful",
-        "role": user.role
+        "role": user.role,
+        "user_id": user.id,
+        "register_no": register_no
     }
 
 @app.post("/student/profile")
-def create_student_profile(
-    # Mandatory
-    name: str,
-    register_no: str,
+def create_student_profile(user_id: int, student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
+    user_existing = db.query(models.Student).filter(models.Student.user_id == user_id).first()
+    if user_existing:
+        raise HTTPException(status_code=400, detail="You already have a profile.")
 
-    # Optional basic info
-    roll_no: Optional[str] = None,
-    mobile_no: Optional[str] = None,
-    date_of_birth: Optional[date] = None,
+    # Check if student already exists by reg no
+    existing = db.query(models.Student).filter(models.Student.register_no == student_in.register_no).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Student with this register number already exists")
+
+    new_student = models.Student(**student_in.model_dump())
+    new_student.user_id = user_id
+    db.add(new_student)
+    db.commit()
+    db.refresh(new_student)
+
+    return {"message": "Student profile created successfully", "student": new_student}
+
+@app.get("/student/list")
+def get_student_list(
+    from_reg: Optional[str] = None,
+    to_reg: Optional[str] = None,
     gender: Optional[str] = None,
     scholar_type: Optional[str] = None,
-
-    # Parent details
-    father_name: Optional[str] = None,
-    father_mobile_no: Optional[str] = None,
-    mother_name: Optional[str] = None,
-    mother_mobile_no: Optional[str] = None,
-
-    # Personal & community
-    blood_group: Optional[str] = None,
-    residential_address: Optional[str] = None,
     community: Optional[str] = None,
-    caste: Optional[str] = None,
-
-    # Academic records
-    hslc_total_marks: Optional[str] = None,
-    hslc_cutoff_marks: Optional[str] = None,
-    hslc_percentage: Optional[str] = None,
-
-    sslc_total_marks: Optional[str] = None,
-    sslc_percentage: Optional[str] = None,
-
-    # Government IDs
-    emis_number: Optional[str] = None,
-    umis_number: Optional[str] = None,
-    aadhar_number: Optional[str] = None,
-
-    # Student categories & scholarships
+    blood_group: Optional[str] = None,
     first_graduate: Optional[bool] = None,
-    first_graduate_certificate_number: Optional[str] = None,
-    pudhumai_pen: Optional[bool] = None,
-
     sc_st_scholarship: Optional[bool] = None,
+    pudhumai_pen: Optional[bool] = None,
+    mbc_bc_scholarship: Optional[bool] = None,
     pmss_scholarship: Optional[bool] = None,
     category_7_5_scholarship: Optional[bool] = None,
     mudhalvan_scholarship: Optional[bool] = None,
-
     other_scholarship: Optional[bool] = None,
-    other_scholarship_name: Optional[str] = None,
-
+    project_domain: Optional[List[str]] = Query(None),
+    cert_domain: Optional[List[str]] = Query(None),
+    has_projects: Optional[bool] = None,
+    has_certifications: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
-    student = Student(
-        name=name,
-        register_no=register_no,
-        roll_no=roll_no,
-        mobile_no=mobile_no,
-        date_of_birth=date_of_birth,
-        gender=gender,
-        scholar_type=scholar_type,
+    query = db.query(Student)
 
-        father_name=father_name,
-        father_mobile_no=father_mobile_no,
-        mother_name=mother_name,
-        mother_mobile_no=mother_mobile_no,
+    # Register Number Range
+    if from_reg:
+        query = query.filter(Student.register_no >= from_reg)
+    if to_reg:
+        query = query.filter(Student.register_no <= to_reg)
 
-        blood_group=blood_group,
-        residential_address=residential_address,
-        community=community,
-        caste=caste,
+    # Direct Matches
+    if gender:
+        query = query.filter(Student.gender == gender)
+    if scholar_type:
+        query = query.filter(Student.scholar_type == scholar_type)
 
-        hslc_total_marks=hslc_total_marks,
-        hslc_cutoff_marks=hslc_cutoff_marks,
-        hslc_percentage=hslc_percentage,
+    # Case-Insensitive Matches
+    if community:
+        query = query.filter(Student.community.ilike(community))
+    if blood_group:
+        query = query.filter(Student.blood_group.ilike(blood_group))
 
-        sslc_total_marks=sslc_total_marks,
-        sslc_percentage=sslc_percentage,
+    # Booleans (only apply if value is checked/provided as True)
+    if first_graduate:
+        query = query.filter(Student.first_graduate == True)
+    if sc_st_scholarship:
+        query = query.filter(Student.sc_st_scholarship == True)
+    if pudhumai_pen:
+        query = query.filter(Student.pudhumai_pen == True)
+    if mbc_bc_scholarship:
+        query = query.filter(Student.mbc_bc_scholarship == True)
+    if pmss_scholarship:
+        query = query.filter(Student.pmss_scholarship == True)
+    if category_7_5_scholarship:
+        query = query.filter(Student.category_7_5_scholarship == True)
+    if mudhalvan_scholarship:
+        query = query.filter(Student.mudhalvan_scholarship == True)
+    if other_scholarship:
+        query = query.filter(Student.other_scholarship == True)
 
-        emis_number=emis_number,
-        umis_number=umis_number,
-        aadhar_number=aadhar_number,
+    if has_projects or project_domain:
+        sub_query = db.query(models.Project.student_id)
+        if project_domain:
+            # Match ANY of the selected domains (OR logic for flexibility)
+            sub_query = sub_query.filter(or_(*[models.Project.domains.cast(JSONB).contains([d.lower()]) for d in project_domain]))
+        query = query.filter(models.Student.id.in_(sub_query))
+    
+    if has_certifications or cert_domain:
+        sub_query = db.query(models.Certification.student_id)
+        if cert_domain:
+            # Match ANY of the selected domains
+            sub_query = sub_query.filter(or_(*[models.Certification.domains.cast(JSONB).contains([d.lower()]) for d in cert_domain]))
+        query = query.filter(models.Student.id.in_(sub_query))
 
-        first_graduate=first_graduate,
-        first_graduate_certificate_number=first_graduate_certificate_number,
-        pudhumai_pen=pudhumai_pen,
-
-        sc_st_scholarship=sc_st_scholarship,
-        pmss_scholarship=pmss_scholarship,
-        category_7_5_scholarship=category_7_5_scholarship,
-        mudhalvan_scholarship=mudhalvan_scholarship,
-
-        other_scholarship=other_scholarship,
-        other_scholarship_name=other_scholarship_name,
-
-        class_id=1  # 3 CSE B
-    )
-
-    db.add(student)
-    db.commit()
-
-    return {"message": "Student profile created successfully"}
+    return query.order_by(Student.register_no).all()
 
 @app.get("/student/profile/{register_no}")
-def get_student_profile(register_no: str, db: Session = Depends(get_db)):
+def get_student_profile(register_no: str, user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    if user_id is not None:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.role == "student":
+            # Check if this user already has a DIFFERENT profile saved
+            user_profile = db.query(models.Student).filter(models.Student.user_id == user_id).first()
+            if user_profile and user_profile.register_no != register_no:
+                raise HTTPException(status_code=403, detail="Restricted: You have already saved your data under your own register number.")
+
     student = db.query(Student).filter(Student.register_no == register_no).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+
+    if user_id is not None:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.role == "student":
+            if student.user_id is not None and student.user_id != user_id:
+                raise HTTPException(status_code=403, detail="Restricted: You cannot view someone else's profile.")
 
     return student
 
 @app.put("/student/profile/{register_no}")
 def update_student_profile(
     register_no: str,
-
-    # Optional fields (only update what user sends)
-    name: Optional[str] = None,
-    roll_no: Optional[str] = None,
-    mobile_no: Optional[str] = None,
-    date_of_birth: Optional[date] = None,
-    gender: Optional[str] = None,
-    scholar_type: Optional[str] = None,
-
-    father_name: Optional[str] = None,
-    father_mobile_no: Optional[str] = None,
-    mother_name: Optional[str] = None,
-    mother_mobile_no: Optional[str] = None,
-
-    blood_group: Optional[str] = None,
-    residential_address: Optional[str] = None,
-    community: Optional[str] = None,
-    caste: Optional[str] = None,
-
-    hslc_total_marks: Optional[str] = None,
-    hslc_cutoff_marks: Optional[str] = None,
-    hslc_percentage: Optional[str] = None,
-
-    sslc_total_marks: Optional[str] = None,
-    sslc_percentage: Optional[str] = None,
-
-    # Government IDs
-    emis_number: Optional[str] = None,
-    umis_number: Optional[str] = None,
-    aadhar_number: Optional[str] = None,
-
-    # Student categories & scholarships
-    first_graduate: Optional[bool] = None,
-    first_graduate_certificate_number: Optional[str] = None,
-    pudhumai_pen: Optional[bool] = None,
-
-    sc_st_scholarship: Optional[bool] = None,
-    pmss_scholarship: Optional[bool] = None,
-    category_7_5_scholarship: Optional[bool] = None,
-    mudhalvan_scholarship: Optional[bool] = None,
-
-    other_scholarship: Optional[bool] = None,
-    other_scholarship_name: Optional[str] = None,
-
+    student_update: schemas.StudentUpdate,
+    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
-    student = db.query(Student).filter(Student.register_no == register_no).first()
+    student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
+    if user_id is not None:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.role == "student":
+            if student.user_id is not None and student.user_id != user_id:
+                raise HTTPException(status_code=403, detail="Restricted: You cannot update someone else's profile.")
+
     # Update only provided fields
-    params = locals()
-    for field, value in params.items():
-        if field not in ["db", "register_no", "student", "params"] and value is not None:
-            if hasattr(student, field):
-                setattr(student, field, value)
+    update_data = student_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(student, field, value)
 
     db.commit()
     db.refresh(student)
 
-    return {"message": "Student profile updated successfully"}
+    return {"message": "Student profile updated successfully", "student": student}
+
+# Recovery Features
+@app.post("/forgot-password")
+def forgot_password(email: str, db: Session = Depends(get_db)):
+    email = email.strip()
+    user = db.query(models.User).filter(models.User.email.ilike(email)).first()
+    if not user:
+        # For security, don't reveal if email exists, but here user wants specific behavior
+        raise HTTPException(status_code=404, detail="Email not found")
+
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = int(time.time()) + 300  # 5 minutes
+
+    # Clean old OTPs for this email
+    db.query(models.OTP).filter(models.OTP.email.ilike(email)).delete(synchronize_session=False)
+    
+    new_otp = models.OTP(email=email, otp_code=otp_code, expires_at=expires_at)
+    db.add(new_otp)
+    db.commit()
+
+    if not send_email("Password Reset OTP", email, f"Your OTP for password reset is: {otp_code}. It expires in 5 minutes."):
+        raise HTTPException(status_code=500, detail="Failed to send email. Check backend configuration.")
+    return {"message": "OTP sent to email"}
+
+@app.post("/forgot-username")
+def forgot_username(email: str, db: Session = Depends(get_db)):
+    email = email.strip()
+    user = db.query(models.User).filter(models.User.email.ilike(email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = int(time.time()) + 300  # 5 minutes
+
+    db.query(models.OTP).filter(models.OTP.email.ilike(email)).delete(synchronize_session=False)
+    
+    new_otp = models.OTP(email=email, otp_code=otp_code, expires_at=expires_at)
+    db.add(new_otp)
+    db.commit()
+
+    if not send_email("Username Recovery OTP", email, f"Your OTP for username recovery is: {otp_code}. It expires in 5 minutes."):
+        raise HTTPException(status_code=500, detail="Failed to send email. Check backend configuration.")
+    return {"message": "OTP sent to email"}
+
+@app.post("/verify-otp")
+def verify_otp(email: str, otp_code: str, db: Session = Depends(get_db)):
+    email = email.strip()
+    otp_code = otp_code.strip()
+    otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email)).first()
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="No OTP found for this email")
+
+    if otp_record.attempts >= 3:
+        db.delete(otp_record)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Max attempts reached. Request a new OTP.")
+
+    if otp_record.expires_at < int(time.time()):
+        db.delete(otp_record)
+        db.commit()
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    if otp_record.otp_code != otp_code:
+        otp_record.attempts += 1
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # Success - but don't delete yet if we need it for the next step?
+    # Actually, user said "OTP deleted after use". So for forgot username, we can delete and return username.
+    # For password reset, we verify then reset.
+    return {"message": "OTP verified"}
+
+@app.post("/reset-password")
+def reset_password(email: str, otp_code: str, new_password: str, db: Session = Depends(get_db)):
+    email = email.strip()
+    otp_code = otp_code.strip()
+    otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email), models.OTP.otp_code == otp_code).first()
+    
+    if not otp_record or otp_record.expires_at < int(time.time()):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    user = db.query(models.User).filter(models.User.email.ilike(email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.password_hash = hash_password(new_password)
+    db.delete(otp_record)
+    db.commit()
+
+    return {"message": "Password reset successful"}
+
+@app.post("/retrieve-username")
+def retrieve_username(email: str, otp_code: str, db: Session = Depends(get_db)):
+    email = email.strip()
+    otp_code = otp_code.strip()
+    otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email), models.OTP.otp_code == otp_code).first()
+    
+    if not otp_record or otp_record.expires_at < int(time.time()):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    user = db.query(models.User).filter(models.User.email.ilike(email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    username = user.username
+    # Mask username: f***y if faculty
+    masked_username = username[0] + "*" * (len(username) - 2) + username[-1] if len(username) > 2 else username
+
+    db.delete(otp_record)
+    db.commit()
+
+    return {"username": username, "masked_username": masked_username}
+
+# Project & Certification Features
+@app.post("/student/{register_no}/projects")
+def add_project(register_no: str, project_in: schemas.ProjectCreate, db: Session = Depends(get_db)):
+    student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    new_project = models.Project(
+        student_id=student.id,
+        description=project_in.description,
+        domains=project_in.domains,
+        github_link=project_in.github_link
+    )
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+
+    # Log activity
+    log = models.ActivityLog(
+        student_id=student.id,
+        activity_type="project_added",
+        reference_id=new_project.id
+    )
+    db.add(log)
+    db.commit()
+
+    return new_project
+
+@app.get("/student/{register_no}/projects")
+def get_projects(register_no: str, db: Session = Depends(get_db)):
+    student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return db.query(models.Project).filter(models.Project.student_id == student.id).all()
+
+@app.post("/student/{register_no}/certifications")
+def add_certification(register_no: str, cert_in: schemas.CertificationCreate, db: Session = Depends(get_db)):
+    student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    new_cert = models.Certification(
+        student_id=student.id,
+        description=cert_in.description,
+        domains=cert_in.domains,
+        certificate_link=cert_in.certificate_link
+    )
+    db.add(new_cert)
+    db.commit()
+    db.refresh(new_cert)
+
+    # Log activity
+    log = models.ActivityLog(
+        student_id=student.id,
+        activity_type="cert_added",
+        reference_id=new_cert.id
+    )
+    db.add(log)
+    db.commit()
+
+    return new_cert
+
+@app.get("/student/{register_no}/certifications")
+def get_certifications(register_no: str, db: Session = Depends(get_db)):
+    student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return db.query(models.Certification).filter(models.Certification.student_id == student.id).all()
+
+@app.get("/faculty/activity-logs")
+def get_activity_logs(db: Session = Depends(get_db)):
+    logs = db.query(
+        models.ActivityLog, 
+        models.Student.name.label("student_name"),
+        models.Student.register_no.label("register_no")
+    ).join(models.Student).filter(models.ActivityLog.seen_by_faculty == False).all()
+    
+    result = []
+    for log, name, reg in logs:
+        log_data = schemas.ActivityLog.from_orm(log)
+        log_data.student_name = name
+        log_data.register_no = reg
+        
+        # Populate details based on type
+        if log.activity_type == "project_added":
+            item = db.query(models.Project).filter(models.Project.id == log.reference_id).first()
+            if item:
+                log_data.description = item.description
+                log_data.domains = item.domains
+                log_data.link = item.github_link
+        elif log.activity_type == "cert_added":
+            item = db.query(models.Certification).filter(models.Certification.id == log.reference_id).first()
+            if item:
+                log_data.description = item.description
+                log_data.domains = item.domains
+                log_data.link = item.certificate_link
+                
+        result.append(log_data)
+        
+    return result
+
+@app.post("/faculty/activity-logs/{log_id}/seen")
+def mark_log_seen(log_id: int, db: Session = Depends(get_db)):
+    log = db.query(models.ActivityLog).filter(models.ActivityLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    log.seen_by_faculty = True
+    db.commit()
+    return {"message": "Marked as seen"}
+
+@app.delete("/student/projects/{project_id}")
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db.query(models.ActivityLog).filter(models.ActivityLog.activity_type == "project_added", models.ActivityLog.reference_id == project_id).delete()
+    db.delete(project)
+    db.commit()
+    return {"message": "Project deleted"}
+
+@app.delete("/student/certifications/{cert_id}")
+def delete_certification(cert_id: int, db: Session = Depends(get_db)):
+    cert = db.query(models.Certification).filter(models.Certification.id == cert_id).first()
+    if not cert:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    db.query(models.ActivityLog).filter(models.ActivityLog.activity_type == "cert_added", models.ActivityLog.reference_id == cert_id).delete()
+    db.delete(cert)
+    db.commit()
+    return {"message": "Certification deleted"}
 

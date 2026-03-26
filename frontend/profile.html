@@ -8,273 +8,679 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        .profile-form-container {
-            max-width: 1200px;
-            width: 95%;
-            margin: 2rem auto;
-            padding: 2.5rem;
+        :root {
+            --accent: #08CB00;
+            --accent-glow: rgba(8, 203, 0, 0.2);
+            --bg-dark: #f0f7ed;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --text-main: #061a00;
+            --text-dim: #2d4a1e;
+            --glass-border: rgba(8, 203, 0, 0.15);
+            --success: #07ac00;
+            --secondary: #AEEA94;
+            --highlight: #E4FF30;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f7ed 0%, #e1f0db 100%);
+            min-height: 100vh;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            padding: 2rem 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .profile-card {
             background: var(--bg-card);
-            border-radius: 30px;
-            border: 1px solid var(--glass-border);
             backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
         }
 
-        .readonly input,
-        .readonly select {
-            background: transparent;
-            border: 1px solid transparent;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            pointer-events: none;
-            color: var(--text-dim);
-        }
-
-        .action-bar {
-            position: sticky;
-            top: 1rem;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            border-radius: 20px;
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            z-index: 100;
+            margin-bottom: 3rem;
+            position: sticky;
+            top: 1rem;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
             border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
         }
 
-        .badge {
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
+        .header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            background: linear-gradient(to right, #08CB00, #07ac00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+            animation: slideUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        .badge-new {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-            border: 1px solid #22c55e;
+        .section-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--accent), transparent);
         }
 
-        .badge-view {
-            background: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
-            border: 1px solid #6366f1;
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        input,
+        select,
+        textarea {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        input:disabled,
+        select:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            border-color: transparent;
+            background: rgba(0, 0, 0, 0.02);
+            color: var(--text-dim);
         }
 
         .checkbox-group {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(15, 23, 42, 0.4);
-            padding: 10px 15px;
-            border-radius: 12px;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 1.5rem;
+            border-radius: 16px;
             border: 1px solid var(--glass-border);
         }
 
-        .checkbox-group input {
-            width: 20px;
-            height: 20px;
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
             cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(8, 203, 0, 0.05);
+        }
+
+        .checkbox-item input {
+            width: 1.2rem;
+            height: 1.2rem;
+            accent-color: var(--accent);
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--accent), var(--success));
+            color: white;
+            box-shadow: 0 10px 15px -3px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 20px -5px var(--accent-glow);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: rgba(8, 203, 0, 0.03);
+            border-color: var(--accent);
+        }
+
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-view {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .badge-edit {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge-create {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Animation for sections */
+        .section:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .section:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .section:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        .section:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+
+        .section:nth-child(5) {
+            animation-delay: 0.5s;
         }
     </style>
 </head>
 
-<body style="display: block;">
-    <div class="profile-form-container animate-fade">
-        <div class="action-bar">
+<body>
+    <div class="container">
+        <div class="header">
             <div>
-                <h2 id="pageTitle" style="margin: 0;">Student Profile</h2>
-                <div id="modeBadge" class="badge">View Mode</div>
+                <h1 id="pageTitle">Student Profile</h1>
+                <span id="modeBadge" class="badge">View Mode</span>
             </div>
             <div style="display: flex; gap: 1rem;">
-                <button class="btn btn-outline" style="width: auto; margin: 0;"
-                    onclick="window.location.href='dashboard.html'">Back</button>
-                <button id="editBtn" class="btn btn-primary" style="width: auto; margin: 0;" onclick="enableEdit()">Edit
-                    Profile</button>
-                <button id="saveBtn" class="btn btn-primary hidden" style="width: auto; margin: 0; background: #22c55e;"
-                    onclick="saveProfile()">Save Profile</button>
+                <button class="btn btn-primary header-btn" style="background: var(--text-dim);"
+                    onclick="handleBack()">Back</button>
+                <button id="editBtn" class="btn btn-primary header-btn" onclick="enableEdit()">Edit Profile</button>
+                <button id="saveBtn" class="btn btn-primary header-btn hidden" style="background: var(--primary);"
+                    onclick="saveProfile()">Save Changes</button>
             </div>
         </div>
 
-        <form id="profileForm" class="readonly">
-            <div class="profile-grid">
-                <h3 class="section-title">Personal Information</h3>
-                <div class="form-group">
-                    <label>Full Name *</label>
-                    <input type="text" id="name" required>
-                </div>
-                <div class="form-group">
-                    <label>Register Number *</label>
-                    <input type="text" id="register_no" required>
-                </div>
-                <div class="form-group">
-                    <label>Roll Number</label>
-                    <input type="text" id="roll_no">
-                </div>
-                <div class="form-group">
-                    <label>Mobile Number</label>
-                    <input type="text" id="mobile_no">
-                </div>
-                <div class="form-group">
-                    <label>Date of Birth</label>
-                    <input type="date" id="date_of_birth">
-                </div>
-                <div class="form-group">
-                    <label>Gender</label>
-                    <select id="gender">
-                        <option value="">Select</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Scholar Type</label>
-                    <select id="scholar_type">
-                        <option value="">Select</option>
-                        <option value="Day Scholar">Day Scholar</option>
-                        <option value="Hosteller">Hosteller</option>
-                    </select>
-                </div>
+        <div class="profile-card">
 
-                <h3 class="section-title">Community & Parent Details</h3>
-                <div class="form-group">
-                    <label>Community</label>
-                    <input type="text" id="community" placeholder="BC, MBC, SC, etc.">
-                </div>
-                <div class="form-group">
-                    <label>Caste</label>
-                    <input type="text" id="caste">
-                </div>
-                <div class="form-group">
-                    <label>Father's Name</label>
-                    <input type="text" id="father_name">
-                </div>
-                <div class="form-group">
-                    <label>Father's Mobile</label>
-                    <input type="text" id="father_mobile_no">
-                </div>
-                <div class="form-group">
-                    <label>Mother's Name</label>
-                    <input type="text" id="mother_name">
-                </div>
-                <div class="form-group">
-                    <label>Mother's Mobile</label>
-                    <input type="text" id="mother_mobile_no">
-                </div>
 
-                <h3 class="section-title">Academic Records</h3>
-                <div class="form-group">
-                    <label>HSLC Total Marks</label>
-                    <input type="text" id="hslc_total_marks">
-                </div>
-                <div class="form-group">
-                    <label>HSLC Percentage</label>
-                    <input type="text" id="hslc_percentage">
-                </div>
-                <div class="form-group">
-                    <label>HSLC Cutoff</label>
-                    <input type="text" id="hslc_cutoff_marks">
-                </div>
-                <div class="form-group">
-                    <label>SSLC Total Marks</label>
-                    <input type="text" id="sslc_total_marks">
-                </div>
-                <div class="form-group">
-                    <label>SSLC Percentage</label>
-                    <input type="text" id="sslc_percentage">
-                </div>
-
-                <h3 class="section-title">Identity & Government IDs</h3>
-                <div class="form-group">
-                    <label>Residential Address</label>
-                    <input type="text" id="residential_address">
-                </div>
-                <div class="form-group">
-                    <label>Blood Group</label>
-                    <input type="text" id="blood_group">
-                </div>
-                <div class="form-group">
-                    <label>Aadhar Number</label>
-                    <input type="text" id="aadhar_number">
-                </div>
-                <div class="form-group">
-                    <label>EMIS Number</label>
-                    <input type="text" id="emis_number">
-                </div>
-                <div class="form-group">
-                    <label>UMIS Number</label>
-                    <input type="text" id="umis_number">
-                </div>
-
-                <h3 class="section-title">Scholarships & Benefits</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="first_graduate">
-                    <label for="first_graduate">First Graduate</label>
-                </div>
-                <div class="form-group">
-                    <label>FG Certificate Number</label>
-                    <input type="text" id="first_graduate_certificate_number">
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="pudhumai_pen">
-                    <label for="pudhumai_pen">Pudhumai Pen</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="sc_st_scholarship">
-                    <label for="sc_st_scholarship">SC/ST Scholarship</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="pmss_scholarship">
-                    <label for="pmss_scholarship">PMSS Scholarship</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="category_7_5_scholarship">
-                    <label for="category_7_5_scholarship">7.5 Reservation</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="mudhalvan_scholarship">
-                    <label for="mudhalvan_scholarship">Naan Mudhalvan</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="other_scholarship">
-                    <label for="other_scholarship">Other Scholarship</label>
-                </div>
-                <div class="form-group">
-                    <label>Scholarship Name</label>
-                    <input type="text" id="other_scholarship_name">
-                </div>
-
+            <!-- Toggle Button for Full Profile -->
+            <div
+                style="text-align: center; margin-bottom: 2rem; border-bottom: 1px dashed var(--glass-border); padding-bottom: 2rem;">
+                <button type="button" class="btn btn-outline" id="toggleProfileBtn" onclick="toggleFullProfile()"
+                    style="font-size: 1.1rem; padding: 0.8rem 2rem; border-radius: 30px;">
+                    View Complete Student Info ▾
+                </button>
             </div>
+
+            <form id="profileForm" class="hidden"
+                style="margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 2rem;">
+                <!-- 1) General Information -->
+                <div class="section">
+                    <div class="section-title">General Information</div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Full Name *</label>
+                            <input type="text" id="name" required disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Register Number *</label>
+                            <input type="text" id="register_no" required disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Roll Number</label>
+                            <input type="text" id="roll_no" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Mobile Number</label>
+                            <input type="text" id="mobile_no" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" id="date_of_birth" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="gender" disabled>
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Scholar Type</label>
+                            <select id="scholar_type" disabled>
+                                <option value="">Select</option>
+                                <option value="Day Scholar">Day Scholar</option>
+                                <option value="Hosteller">Hosteller</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Blood Group</label>
+                            <input type="text" id="blood_group" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Email (Personal)</label>
+                            <input type="email" id="email_personal" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Email (College ID)</label>
+                            <input type="email" id="email_college" disabled>
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Residential Address</label>
+                            <input type="text" id="residential_address" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Nationality</label>
+                            <input type="text" id="nationality" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Community</label>
+                            <input type="text" id="community" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Caste</label>
+                            <input type="text" id="caste" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Religion</label>
+                            <input type="text" id="religion" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" id="father_name" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Father's Number</label>
+                            <input type="text" id="father_mobile_no" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Father's Occupation</label>
+                            <input type="text" id="father_occupation" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Mother's Name</label>
+                            <input type="text" id="mother_name" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Mother's Number</label>
+                            <input type="text" id="mother_mobile_no" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Mother's Occupation</label>
+                            <input type="text" id="mother_occupation" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Guardian Name</label>
+                            <input type="text" id="guardian_name" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Guardian Number</label>
+                            <input type="text" id="guardian_mobile_no" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Guardian Occupation</label>
+                            <input type="text" id="guardian_occupation" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Family Annual Income</label>
+                            <input type="text" id="family_annual_income" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Special Admission</label>
+                            <select id="is_special_admission" disabled>
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Differently Abled</label>
+                            <select id="is_differently_abled" disabled>
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2) Academic Info -->
+                <div class="section">
+                    <div class="section-title">Academic Info</div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>UMIS ID</label>
+                            <input type="text" id="umis_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>EMIS ID</label>
+                            <input type="text" id="emis_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Year of Joining</label>
+                            <input type="text" id="academic_year_of_joining" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Course Type</label>
+                            <select id="course_type" disabled>
+                                <option value="">Select</option>
+                                <option value="ug">UG</option>
+                                <option value="pg">PG</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Branch / Specialization</label>
+                            <input type="text" id="branch_specialization" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Mode of Study</label>
+                            <select id="mode_of_study" disabled>
+                                <option value="regular">Regular</option>
+                                <option value="lateral">Lateral</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type of Admission</label>
+                            <select id="type_of_admission" disabled>
+                                <option value="gq">Government Quota (GQ)</option>
+                                <option value="mq">Management Quota (MQ)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Medium of Instruction</label>
+                            <input type="text" id="medium_of_instruction" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Admission</label>
+                            <input type="date" id="date_of_admission" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Counselling / Admission No.</label>
+                            <input type="text" id="counselling_admission_number" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3) Scholarships and Benefits -->
+                <div class="section">
+                    <div class="section-title">Scholarships & Benefits</div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="first_graduate" disabled>
+                            <span>First Graduate</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="pudhumai_pen" disabled>
+                            <span>Pudhumai Pen</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="sc_st_scholarship" disabled>
+                            <span>SC/ST Scholarship</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="mbc_bc_scholarship" disabled>
+                            <span>MBC/BC Scholarship</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="pmss_scholarship" disabled>
+                            <span>PMSS Scholarship</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="category_7_5_scholarship" disabled>
+                            <span>7.5 Reservation</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="mudhalvan_scholarship" disabled>
+                            <span>Naan Mudhalvan</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="other_scholarship" disabled>
+                            <span>Other Scholarship</span>
+                        </label>
+                        <div class="form-group" style="width: 100%; margin-top: 1rem;">
+                            <label>Other Scholarship Name</label>
+                            <input type="text" id="other_scholarship_name" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4) Certificate Numbers -->
+                <div class="section">
+                    <div class="section-title">Certificate Numbers</div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Aadhar Number</label>
+                            <input type="text" id="aadhar_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>FG Certificate Number</label>
+                            <input type="text" id="first_graduate_certificate_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Community Certificate Number</label>
+                            <input type="text" id="community_certificate_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Income Certificate Number</label>
+                            <input type="text" id="income_certificate_number" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5) Bank Account Details -->
+                <div class="section">
+                    <div class="section-title">Bank Account Details</div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" id="bank_name" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" id="account_number" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>IFSC Code</label>
+                            <input type="text" id="ifsc_code" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Bank Branch</label>
+                            <input type="text" id="bank_branch" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>City</label>
+                            <input type="text" id="city" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Account Type</label>
+                            <select id="account_type" disabled>
+                                <option value="savings">Savings</option>
+                                <option value="current">Current</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+        </div>
         </form>
+
+            <div id="extraSections" style="margin-top: 3rem; border-top: 1px dashed var(--glass-border); padding-top: 2rem;">
+                <!-- 1) Projects Section -->
+                <div class="section" style="opacity: 1;">
+                    <div class="section-title" style="color: var(--primary);">Academic Projects</div>
+                    <div id="projectList" class="card-grid"
+                        style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                        <p style="color: var(--text-dim); padding: 1rem;">Loading projects...</p>
+                    </div>
+                </div>
+
+                <!-- 2) Certifications Section -->
+                <div class="section" style="opacity: 1;">
+                    <div class="section-title" style="color: var(--primary);">Certifications</div>
+                    <div id="certList" class="card-grid"
+                        style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                        <p style="color: var(--text-dim); padding: 1rem;">Loading certifications...</p>
+                    </div>
+                </div>
+            </div>
+
     </div>
 
     <script>
         const API_URL = "http://127.0.0.1:8000";
         const urlParams = new URLSearchParams(window.location.search);
         const regNo = urlParams.get('reg');
-        const mode = urlParams.get('mode'); // 'create' or null
+        const mode = urlParams.get('mode');
+
+        function handleBack() {
+            const role = localStorage.getItem('role');
+            window.location.href = role === 'faculty' ? "faculty_dashboard.html" : "dashboard.html";
+        }
 
         window.onload = async () => {
+            const role = localStorage.getItem('role');
             if (regNo) document.getElementById('register_no').value = regNo;
+
+            // Apply student-specific UI layout (hide projects/certs, auto-expand form)
+            if (role !== 'faculty') {
+                const extra = document.getElementById('extraSections');
+                if (extra) extra.classList.add('hidden');
+
+                const form = document.getElementById('profileForm');
+                if (form) {
+                    form.classList.remove('hidden');
+                    form.style.border = 'none';
+                    form.style.marginTop = '0';
+                    form.style.paddingTop = '0';
+                }
+
+                const toggleContainer = document.getElementById('toggleProfileBtn').parentElement;
+                if (toggleContainer) toggleContainer.classList.add('hidden');
+            }
 
             if (mode === 'create') {
                 enableEdit();
                 document.getElementById('modeBadge').innerText = "Create Mode";
-                document.getElementById('modeBadge').className = "badge badge-new";
+                document.getElementById('modeBadge').className = "badge badge-create";
                 document.getElementById('editBtn').classList.add('hidden');
+                document.getElementById('register_no').disabled = false;
             } else {
                 await loadProfile();
+                if (role === 'faculty') {
+                    document.getElementById('editBtn').classList.add('hidden');
+                    // Fetch and show extra items for faculty
+                    fetchExtraItems(regNo, 'projects', 'projectList');
+                    fetchExtraItems(regNo, 'certifications', 'certList');
+                }
+
+                if (mode === 'edit') {
+                    toggleFullProfile(true);
+                }
             }
         };
 
+        function toggleFullProfile(forceShow = false) {
+            const form = document.getElementById('profileForm');
+            const btn = document.getElementById('toggleProfileBtn');
+
+            if (forceShow || form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                btn.innerText = "Hide Complete Student Info ▴";
+            } else {
+                form.classList.add('hidden');
+                btn.innerText = "View Complete Student Info ▾";
+            }
+        }
+
         async function loadProfile() {
             try {
-                const response = await fetch(`${API_URL}/student/profile/${regNo}`);
+                const userId = localStorage.getItem('user_id');
+                const response = await fetch(`${API_URL}/student/profile/${regNo}?user_id=${userId}`);
+                
                 if (response.ok) {
                     const data = await response.json();
-
-                    // Fill text/select fields
                     Object.keys(data).forEach(key => {
                         const el = document.getElementById(key);
                         if (el) {
@@ -285,7 +691,6 @@
                             }
                         }
                     });
-
                     document.getElementById('modeBadge').innerText = "View Mode";
                     document.getElementById('modeBadge').className = "badge badge-view";
                 }
@@ -295,48 +700,85 @@
         }
 
         function enableEdit() {
-            document.getElementById('profileForm').classList.remove('readonly');
+            document.querySelectorAll('input, select').forEach(el => el.disabled = false);
+            if (mode !== 'create') document.getElementById('register_no').disabled = true;
+
             document.getElementById('editBtn').classList.add('hidden');
             document.getElementById('saveBtn').classList.remove('hidden');
-            document.getElementById('modeBadge').innerText = "Edit Mode";
-            document.getElementById('register_no').style.pointerEvents = 'none'; // Lock register number
+            document.getElementById('modeBadge').innerText = (mode === 'create') ? "Create Mode" : "Edit Mode";
+            document.getElementById('modeBadge').className = (mode === 'create') ? "badge badge-create" : "badge badge-edit";
         }
 
         async function saveProfile() {
             const form = document.getElementById('profileForm');
-            const formData = {};
+            const data = {};
 
-            // Collect data from all inputs
             form.querySelectorAll('input, select').forEach(el => {
                 if (el.id) {
                     if (el.type === 'checkbox') {
-                        formData[el.id] = el.checked;
+                        data[el.id] = el.checked;
                     } else if (el.value !== "") {
-                        formData[el.id] = el.value;
+                        data[el.id] = el.value;
+                    } else {
+                        data[el.id] = null;
                     }
                 }
             });
 
+            const userId = localStorage.getItem('user_id');
             const method = (mode === 'create') ? 'POST' : 'PUT';
-            const endpoint = (mode === 'create') ? `${API_URL}/student/profile` : `${API_URL}/student/profile/${regNo}`;
-
-            // Build query params for simplicity as per current backend structure
-            const queryParams = new URLSearchParams(formData).toString();
+            const endpoint = (mode === 'create') ? `${API_URL}/student/profile?user_id=${userId}` : `${API_URL}/student/profile/${regNo}?user_id=${userId}`;
 
             try {
-                const response = await fetch(`${endpoint}?${queryParams}`, {
-                    method: method
+                const response = await fetch(endpoint, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
 
                 if (response.ok) {
                     alert("Profile saved successfully!");
-                    window.location.href = `profile.html?reg=${formData.register_no}`;
+                    window.location.href = "dashboard.html";
                 } else {
                     const err = await response.json();
                     alert("Error saving: " + JSON.stringify(err.detail));
                 }
             } catch (err) {
                 alert("Server error connecting to backend");
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+
+        async function fetchExtraItems(regNo, path, containerId) {
+            try {
+                const response = await fetch(`${API_URL}/student/${regNo}/${path}`);
+                if (response.ok) {
+                    const items = await response.json();
+                    const container = document.getElementById(containerId);
+                    if (items.length === 0) {
+                        container.innerHTML = `<p style="color: var(--text-dim); padding: 1rem;">No ${path} available.</p>`;
+                        return;
+                    }
+
+                    container.innerHTML = items.map(item => `
+                        <div class="item-card" style="padding: 1.5rem; border: 1px solid var(--glass-border); border-radius: 16px; background: white; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem;">${item.description}</h4>
+                            <div style="margin-bottom: 0.5rem;">
+                                ${item.domains.map(d => `<span class="domain-tag" style="background: var(--secondary); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-right: 5px;">${d}</span>`).join('')}
+                            </div>
+                            <div style="font-size: 0.85rem;">
+                                ${item.github_link || item.certificate_link ? `<a href="${item.github_link || item.certificate_link}" target="_blank" style="color: var(--accent);">View Link</a>` : ''}
+                                <span style="float: right; color: var(--text-dim);">${new Date(item.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error(err);
             }
         }
     </script>

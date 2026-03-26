@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="glass-card animate-fade" id="authContainer">
         <h1 class="title">Academia</h1>
@@ -25,9 +27,12 @@
                 <label for="loginUsername">Username</label>
                 <input type="text" id="loginUsername" placeholder="Enter your username" required>
             </div>
-            <div class="form-group">
+            <div class="form-group password-wrapper">
                 <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="••••••••" required>
+                <div class="input-container">
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    <span class="password-toggle" onclick="togglePassword('loginPassword')">👁️</span>
+                </div>
             </div>
             <div class="form-group">
                 <label for="loginRole">Role</label>
@@ -37,6 +42,11 @@
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">Login Now</button>
+            <div class="recovery-links">
+                <a href="#" onclick="showRecovery('password')">Forgot Password?</a>
+                <span>•</span>
+                <a href="#" onclick="showRecovery('username')">Forgot Username?</a>
+            </div>
         </form>
 
         <!-- Signup Form (Hidden by default) -->
@@ -46,16 +56,83 @@
                 <input type="text" id="signupUsername" placeholder="Choose a username" required>
             </div>
             <div class="form-group">
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" placeholder="your email address" required>
+            </div>
+            <div class="form-group password-wrapper">
                 <label for="signupPassword">Password</label>
-                <input type="password" id="signupPassword" placeholder="Create a password" required>
+                <div class="input-container">
+                    <input type="password" id="signupPassword" placeholder="Create a password" required>
+                    <span class="password-toggle" onclick="togglePassword('signupPassword')">👁️</span>
+                </div>
+            </div>
+            <div class="form-group password-wrapper">
+                <label for="signupConfirm">Confirm Password</label>
+                <div class="input-container">
+                    <input type="password" id="signupConfirm" placeholder="Repeat your password" required>
+                    <span class="password-toggle" onclick="togglePassword('signupConfirm')">👁️</span>
+                </div>
             </div>
             <div class="form-group">
-                <label for="signupConfirm">Confirm Password</label>
-                <input type="password" id="signupConfirm" placeholder="Repeat your password" required>
+                <label for="signupRole">Role</label>
+                <select id="signupRole">
+                    <option value="student">Student</option>
+                    <option value="faculty">Faculty</option>
+                </select>
             </div>
-            <input type="hidden" id="signupRole" value="student">
             <button type="submit" class="btn btn-primary">Create Account</button>
         </form>
+
+        <!-- Recovery Form (Hidden by default) -->
+        <div id="recoveryForm" class="hidden">
+            <div id="recoveryStep1">
+                <p class="recovery-desc" id="recoveryText">Enter your registered email to receive an OTP.</p>
+                <div class="form-group">
+                    <label for="recoveryEmail">Email</label>
+                    <input type="email" id="recoveryEmail" placeholder="Enter your email" required>
+                </div>
+                <button type="button" class="btn btn-primary" id="btnSendOTP" onclick="handleSendOTP()">Send
+                    OTP</button>
+                <button type="button" class="btn btn-outline" onclick="showLogin()"
+                    style="width: 100%; border: none; background: none; color: var(--text-dim); margin-top: 10px;">Back
+                    to Login</button>
+            </div>
+
+            <div id="recoveryStep2" class="hidden">
+                <p class="recovery-desc">Enter the 6-digit OTP sent to your email.</p>
+                <div class="form-group">
+                    <label for="recoveryOTP">OTP</label>
+                    <input type="text" id="recoveryOTP" placeholder="123456" maxlength="6" required>
+                </div>
+                <button type="button" class="btn btn-primary" id="btnVerifyOTP" onclick="handleVerifyOTP()">Verify
+                    OTP</button>
+                <p id="otpTimer" class="timer">Expires in <span id="timeLeft">05:00</span></p>
+            </div>
+
+            <div id="recoveryStep3" class="hidden">
+                <!-- For Password Reset -->
+                <div id="resetPasswordGroup" class="hidden">
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" placeholder="Enter new password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmNewPassword">Confirm New Password</label>
+                        <input type="password" id="confirmNewPassword" placeholder="Repeat new password" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="handleResetPassword()">Reset
+                        Password</button>
+                </div>
+                <!-- For Username Retrieval -->
+                <div id="retrieveUsernameGroup" class="hidden">
+                    <div class="username-display">
+                        <p>Your username is:</p>
+                        <h2 id="displayUsername">*******</h2>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="showLogin()">Back to Login</button>
+                </div>
+            </div>
+        </div>
 
         <div class="footer-link">
             <p id="authToggleText">Need an account? <a href="#" onclick="showSignup()">Sign Up</a></p>
@@ -64,4 +141,5 @@
 
     <script src="auth.js"></script>
 </body>
+
 </html>
