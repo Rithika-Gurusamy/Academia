@@ -45,7 +45,10 @@ def send_email(subject, recipient, body):
         print(f"CRITICAL ERROR: Failed to send email: {e}")
         return False
 
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Warning: create_all failed (tables may already exist): {e}")
 
 app = FastAPI()
 
@@ -84,17 +87,22 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    new_user = models.User(
-        username=user.username,
-        email=user.email,
-        password_hash=hash_password(user.password),
-        role=user.role
-    )
+    try:
+        new_user = models.User(
+            username=user.username,
+            email=user.email,
+            password_hash=hash_password(user.password),
+            role=user.role
+        )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"message": "Account created"}
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "Account created"}
+    except Exception as e:
+        db.rollback()
+        print(f"SIGNUP ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 @app.post("/login")
 def login(username: str, password: str, role: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username, User.role == role).first()
