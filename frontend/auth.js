@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://academia-ci0l.onrender.com";
 let recoveryType = 'password'; // 'password' or 'username'
 let countdownTimer;
 
