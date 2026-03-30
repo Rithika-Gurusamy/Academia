@@ -109,12 +109,24 @@
         @media (max-width: 1000px) {
             .main-layout {
                 grid-template-columns: 1fr;
+                padding: 1rem;
             }
 
             .notification-sidebar {
                 height: auto;
                 position: static;
             }
+        }
+
+        @media (max-width: 768px) {
+            .main-layout { padding: 0.75rem; gap: 1rem; }
+            .modal-content { width: 95% !important; padding: 1.5rem !important; }
+            .domain-selection-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            .main-layout { padding: 0.5rem; }
+            .domain-selection-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>

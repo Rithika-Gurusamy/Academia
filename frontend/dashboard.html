@@ -84,6 +84,35 @@
             border-radius: 12px;
             border: 1px solid var(--glass-border);
         }
+
+        /* Mobile responsive for dashboard */
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            .nav-link {
+                padding: 0.4rem 1rem;
+                font-size: 0.85rem;
+            }
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            .modal .glass-card {
+                width: 95% !important;
+                max-width: 95% !important;
+                padding: 1.5rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-link {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+            .item-card { padding: 1rem; }
+            .domain-selection-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 
