@@ -47,8 +47,15 @@ def send_email(subject, recipient, body):
 
 try:
     models.Base.metadata.create_all(bind=engine)
+    # Seed default class if not exists
+    _db = SessionLocal()
+    if not _db.query(models.Class).filter(models.Class.id == 1).first():
+        _db.add(models.Class(id=1, name="Default"))
+        _db.commit()
+        print("Seeded default class row")
+    _db.close()
 except Exception as e:
-    print(f"Warning: create_all failed (tables may already exist): {e}")
+    print(f"Warning: create_all/seed failed: {e}")
 
 app = FastAPI()
 
@@ -137,13 +144,17 @@ def create_student_profile(user_id: int, student_in: schemas.StudentCreate, db: 
     if existing:
         raise HTTPException(status_code=400, detail="Student with this register number already exists")
 
-    new_student = models.Student(**student_in.model_dump())
-    new_student.user_id = user_id
-    db.add(new_student)
-    db.commit()
-    db.refresh(new_student)
-
-    return {"message": "Student profile created successfully", "student": new_student}
+    try:
+        new_student = models.Student(**student_in.model_dump())
+        new_student.user_id = user_id
+        db.add(new_student)
+        db.commit()
+        db.refresh(new_student)
+        return {"message": "Student profile created successfully", "student": new_student}
+    except Exception as e:
+        db.rollback()
+        print(f"PROFILE CREATE ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/student/list")
 def get_student_list(
