@@ -47,15 +47,8 @@ def send_email(subject, recipient, body):
 
 try:
     models.Base.metadata.create_all(bind=engine)
-    # Seed default class if not exists
-    _db = SessionLocal()
-    if not _db.query(models.Class).filter(models.Class.id == 1).first():
-        _db.add(models.Class(id=1, name="Default"))
-        _db.commit()
-        print("Seeded default class row")
-    _db.close()
 except Exception as e:
-    print(f"Warning: create_all/seed failed: {e}")
+    print(f"Warning: create_all failed: {e}")
 
 app = FastAPI()
 

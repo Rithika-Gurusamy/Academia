@@ -20,11 +20,6 @@ class OTP(Base):
     expires_at = Column(Integer, nullable=False)  # Unix timestamp
     attempts = Column(Integer, default=0)
 
-class Class(Base):
-    __tablename__ = "classes"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
 
 class Student(Base): 
     __tablename__ = "students"
@@ -96,8 +91,6 @@ class Student(Base):
     city = Column(String)
     account_type = Column(String)
 
-    # ForeignKey from existing model
-    class_id = Column(Integer, ForeignKey("classes.id"), default=1)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True) # Linked User
 
 class Project(Base):
