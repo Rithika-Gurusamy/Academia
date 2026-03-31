@@ -21,9 +21,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Email Configuration - Hardcoded per user request
-SENDER_EMAIL = "academiastudentvault@gmail.com"
-SENDER_PASSWORD = "vwle wprr tjls tgey"
+# Email Configuration
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
 
 def send_email(subject, recipient, body):
