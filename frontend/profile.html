@@ -988,8 +988,8 @@
             onclick="document.getElementById('helpTipBar').style.display='none'; localStorage.setItem('helpTipDismissed','1');">✕</span>
     </div>
     <script>
-        // Auto-hide help tip if dismissed before or after 15 seconds
-        if (localStorage.getItem('helpTipDismissed') === '1') {
+        // Auto-hide help tip if dismissed before, if role is faculty, or after 15 seconds
+        if (localStorage.getItem('helpTipDismissed') === '1' || localStorage.getItem('role') === 'faculty') {
             document.getElementById('helpTipBar').style.display = 'none';
         } else {
             setTimeout(() => {
