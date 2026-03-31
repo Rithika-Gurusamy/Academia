@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Body
+from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import JSONB
@@ -103,18 +104,23 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
         db.rollback()
         print(f"SIGNUP ERROR: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    role: str
+
 @app.post("/login")
-def login(username: str, password: str, role: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == username, User.role == role).first()
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == data.username, User.role == data.role).first()
 
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials or role")
 
-    if not verify_password(password, user.password_hash):
+    if not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     register_no = None
-    if role == "student":
+    if data.role == "student":
         student = db.query(models.Student).filter(models.Student.user_id == user.id).first()
         if student:
             register_no = student.register_no
@@ -277,12 +283,23 @@ def update_student_profile(
     return {"message": "Student profile updated successfully", "student": student}
 
 # Recovery Features
+class EmailRequest(BaseModel):
+    email: str
+
+class OTPRequest(BaseModel):
+    email: str
+    otp_code: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp_code: str
+    new_password: str
+
 @app.post("/forgot-password")
-def forgot_password(email: str, db: Session = Depends(get_db)):
-    email = email.strip()
+def forgot_password(data: EmailRequest, db: Session = Depends(get_db)):
+    email = data.email.strip()
     user = db.query(models.User).filter(models.User.email.ilike(email)).first()
     if not user:
-        # For security, don't reveal if email exists, but here user wants specific behavior
         raise HTTPException(status_code=404, detail="Email not found")
 
     otp_code = str(random.randint(100000, 999999))
@@ -300,8 +317,8 @@ def forgot_password(email: str, db: Session = Depends(get_db)):
     return {"message": "OTP sent to email"}
 
 @app.post("/forgot-username")
-def forgot_username(email: str, db: Session = Depends(get_db)):
-    email = email.strip()
+def forgot_username(data: EmailRequest, db: Session = Depends(get_db)):
+    email = data.email.strip()
     user = db.query(models.User).filter(models.User.email.ilike(email)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not found")
@@ -320,9 +337,9 @@ def forgot_username(email: str, db: Session = Depends(get_db)):
     return {"message": "OTP sent to email"}
 
 @app.post("/verify-otp")
-def verify_otp(email: str, otp_code: str, db: Session = Depends(get_db)):
-    email = email.strip()
-    otp_code = otp_code.strip()
+def verify_otp(data: OTPRequest, db: Session = Depends(get_db)):
+    email = data.email.strip()
+    otp_code = data.otp_code.strip()
     otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email)).first()
     
     if not otp_record:
@@ -343,15 +360,12 @@ def verify_otp(email: str, otp_code: str, db: Session = Depends(get_db)):
         db.commit()
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # Success - but don't delete yet if we need it for the next step?
-    # Actually, user said "OTP deleted after use". So for forgot username, we can delete and return username.
-    # For password reset, we verify then reset.
     return {"message": "OTP verified"}
 
 @app.post("/reset-password")
-def reset_password(email: str, otp_code: str, new_password: str, db: Session = Depends(get_db)):
-    email = email.strip()
-    otp_code = otp_code.strip()
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email = data.email.strip()
+    otp_code = data.otp_code.strip()
     otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email), models.OTP.otp_code == otp_code).first()
     
     if not otp_record or otp_record.expires_at < int(time.time()):
@@ -361,16 +375,16 @@ def reset_password(email: str, otp_code: str, new_password: str, db: Session = D
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.password_hash = hash_password(new_password)
+    user.password_hash = hash_password(data.new_password)
     db.delete(otp_record)
     db.commit()
 
     return {"message": "Password reset successful"}
 
 @app.post("/retrieve-username")
-def retrieve_username(email: str, otp_code: str, db: Session = Depends(get_db)):
-    email = email.strip()
-    otp_code = otp_code.strip()
+def retrieve_username(data: OTPRequest, db: Session = Depends(get_db)):
+    email = data.email.strip()
+    otp_code = data.otp_code.strip()
     otp_record = db.query(models.OTP).filter(models.OTP.email.ilike(email), models.OTP.otp_code == otp_code).first()
     
     if not otp_record or otp_record.expires_at < int(time.time()):
@@ -381,7 +395,7 @@ def retrieve_username(email: str, otp_code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     username = user.username
-    # Mask username: f***y if faculty
+    # Mask username
     masked_username = username[0] + "*" * (len(username) - 2) + username[-1] if len(username) > 2 else username
 
     db.delete(otp_record)

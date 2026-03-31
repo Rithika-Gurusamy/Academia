@@ -59,8 +59,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const role = document.getElementById('loginRole').value;
 
     try {
-        const response = await fetch(`${API_URL}/login?username=${username}&password=${password}&role=${role}`, {
-            method: 'POST'
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role })
         });
 
         const data = await response.json();
@@ -129,7 +131,11 @@ async function handleSendOTP() {
     const endpoint = recoveryType === 'password' ? '/forgot-password' : '/forgot-username';
 
     try {
-        const response = await fetch(`${API_URL}${endpoint}?email=${email}`, { method: 'POST' });
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -150,7 +156,11 @@ async function handleVerifyOTP() {
     const otp = document.getElementById('recoveryOTP').value;
 
     try {
-        const response = await fetch(`${API_URL}/verify-otp?email=${email}&otp_code=${otp}`, { method: 'POST' });
+        const response = await fetch(`${API_URL}/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp_code: otp })
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -176,7 +186,11 @@ async function handleRetrieveUsername() {
     const otp = document.getElementById('recoveryOTP').value;
 
     try {
-        const response = await fetch(`${API_URL}/retrieve-username?email=${email}&otp_code=${otp}`, { method: 'POST' });
+        const response = await fetch(`${API_URL}/retrieve-username`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp_code: otp })
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -198,7 +212,11 @@ async function handleResetPassword() {
     if (newPassword !== confirm) { alert("Passwords do not match"); return; }
 
     try {
-        const response = await fetch(`${API_URL}/reset-password?email=${email}&otp_code=${otp}&new_password=${newPassword}`, { method: 'POST' });
+        const response = await fetch(`${API_URL}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp_code: otp, new_password: newPassword })
+        });
         if (response.ok) {
             alert("Password reset successful! You can now login.");
             showLogin();
