@@ -1,6 +1,11 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import date
+from typing import Optional, List
+from datetime import date, datetime
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    role: str
 
 class UserBase(BaseModel):
     username: str
