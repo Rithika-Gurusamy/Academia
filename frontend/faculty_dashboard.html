@@ -328,20 +328,39 @@
             cList.innerHTML = '';
 
             domains.forEach(d => {
-                const pItem = `
-                    <label class="domain-checkbox-item">
-                        <input type="checkbox" name="p_domain" value="${d}" onchange="updateDomainSelectionStyle(this)">
-                        <span>${d.toUpperCase()}</span>
-                    </label>
-                `;
-                const cItem = `
-                    <label class="domain-checkbox-item">
-                        <input type="checkbox" name="c_domain" value="${d}" onchange="updateDomainSelectionStyle(this)">
-                        <span>${d.toUpperCase()}</span>
-                    </label>
-                `;
-                pList.innerHTML += pItem;
-                cList.innerHTML += cItem;
+                // Project domains
+                const pLabel = document.createElement('label');
+                pLabel.className = 'domain-checkbox-item';
+                
+                const pInput = document.createElement('input');
+                pInput.type = 'checkbox';
+                pInput.name = 'p_domain';
+                pInput.value = d;
+                pInput.onchange = () => updateDomainSelectionStyle(pInput);
+                
+                const pSpan = document.createElement('span');
+                pSpan.textContent = d.toUpperCase();
+                
+                pLabel.appendChild(pInput);
+                pLabel.appendChild(pSpan);
+                pList.appendChild(pLabel);
+
+                // Certification domains
+                const cLabel = document.createElement('label');
+                cLabel.className = 'domain-checkbox-item';
+                
+                const cInput = document.createElement('input');
+                cInput.type = 'checkbox';
+                cInput.name = 'c_domain';
+                cInput.value = d;
+                cInput.onchange = () => updateDomainSelectionStyle(cInput);
+                
+                const cSpan = document.createElement('span');
+                cSpan.textContent = d.toUpperCase();
+                
+                cLabel.appendChild(cInput);
+                cLabel.appendChild(cSpan);
+                cList.appendChild(cLabel);
             });
         }
 
@@ -451,15 +470,40 @@
                 return;
             }
 
-            container.innerHTML = logs.map(log => `
-                <div class="activity-item new" style="position: relative;">
-                    <div onclick="showDetail(${JSON.stringify(log).replace(/"/g, '&quot;')})">
-                        <strong>${log.student_name}</strong> added a ${log.activity_type === 'project_added' ? 'Project' : 'Certification'}.
-                        <div class="activity-time">${new Date(log.created_at).toLocaleTimeString()} · ${log.register_no}</div>
-                    </div>
-                    <button onclick="dismissLog(${log.id})" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;">&times;</button>
-                </div>
-            `).join('');
+            container.innerHTML = '';
+            logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'activity-item new';
+                div.style.position = 'relative';
+                
+                const clickable = document.createElement('div');
+                clickable.onclick = () => showDetail(log);
+                
+                const strong = document.createElement('strong');
+                strong.textContent = log.student_name;
+                clickable.appendChild(strong);
+                
+                const textNode = document.createTextNode(` added a ${log.activity_type === 'project_added' ? 'Project' : 'Certification'}.`);
+                clickable.appendChild(textNode);
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'activity-time';
+                timeDiv.textContent = `${new Date(log.created_at).toLocaleTimeString()} · ${log.register_no}`;
+                clickable.appendChild(timeDiv);
+                
+                div.appendChild(clickable);
+
+                const btn = document.createElement('button');
+                btn.style.cssText = 'position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;';
+                btn.textContent = '×';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    dismissLog(log.id);
+                };
+                div.appendChild(btn);
+                
+                container.appendChild(div);
+            });
         }
 
         function showDetail(log) {
@@ -467,13 +511,39 @@
             const content = document.getElementById('detailContent');
             const viewBtn = document.getElementById('viewProfileBtn');
 
-            content.innerHTML = `
-                <p><strong>Student:</strong> ${log.student_name} (${log.register_no})</p>
-                <p><strong>Type:</strong> ${log.activity_type === 'project_added' ? 'New Project' : 'New Certification'}</p>
-                <p><strong>Description:</strong> ${log.description || 'N/A'}</p>
-                <p><strong>Domains:</strong> ${log.domains ? log.domains.join(', ').toUpperCase() : 'N/A'}</p>
-                ${log.link ? `<p><strong>Link:</strong> <a href="${log.link}" target="_blank" style="color: var(--primary);">View Attachment</a></p>` : ''}
-            `;
+            content.innerHTML = '';
+            
+            const p1 = document.createElement('p');
+            p1.innerHTML = `<strong>Student:</strong> `;
+            p1.appendChild(document.createTextNode(`${log.student_name} (${log.register_no})`));
+            content.appendChild(p1);
+
+            const p2 = document.createElement('p');
+            p2.innerHTML = `<strong>Type:</strong> `;
+            p2.appendChild(document.createTextNode(log.activity_type === 'project_added' ? 'New Project' : 'New Certification'));
+            content.appendChild(p2);
+
+            const p3 = document.createElement('p');
+            p3.innerHTML = `<strong>Description:</strong> `;
+            p3.appendChild(document.createTextNode(log.description || 'N/A'));
+            content.appendChild(p3);
+
+            const p4 = document.createElement('p');
+            p4.innerHTML = `<strong>Domains:</strong> `;
+            p4.appendChild(document.createTextNode(log.domains ? log.domains.join(', ').toUpperCase() : 'N/A'));
+            content.appendChild(p4);
+
+            if (log.link) {
+                const p5 = document.createElement('p');
+                p5.innerHTML = `<strong>Link:</strong> `;
+                const a = document.createElement('a');
+                a.href = log.link;
+                a.target = '_blank';
+                a.style.color = 'var(--primary)';
+                a.textContent = 'View Attachment';
+                p5.appendChild(a);
+                content.appendChild(p5);
+            }
 
             viewBtn.onclick = () => {
                 window.location.href = `profile.html?reg=${log.register_no}`;
@@ -536,13 +606,23 @@
 
             students.forEach(student => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${student.register_no}</td>
-                    <td>${student.name || 'N/A'}</td>
-                    <td>
-                        <a class="action-link" onclick="viewStudent('${student.register_no}')">View Profile</a>
-                    </td>
-                `;
+                
+                const tdReg = document.createElement('td');
+                tdReg.textContent = student.register_no;
+                tr.appendChild(tdReg);
+
+                const tdName = document.createElement('td');
+                tdName.textContent = student.name || 'N/A';
+                tr.appendChild(tdName);
+
+                const tdAction = document.createElement('td');
+                const a = document.createElement('a');
+                a.className = 'action-link';
+                a.textContent = 'View Profile';
+                a.onclick = () => viewStudent(student.register_no);
+                tdAction.appendChild(a);
+                tr.appendChild(tdAction);
+
                 tbody.appendChild(tr);
             });
         }

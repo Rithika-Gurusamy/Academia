@@ -303,11 +303,20 @@
             document.getElementById('itemLink').value = '';
 
             const domainContainer = document.getElementById('domainList');
-            domainContainer.innerHTML = domains.map(d => `
-                <label class="filter-checkbox">
-                    <input type="checkbox" name="domain" value="${d}"> ${d.toUpperCase()}
-                </label>
-            `).join('');
+            domainContainer.innerHTML = '';
+            domains.forEach(d => {
+                const label = document.createElement('label');
+                label.className = 'filter-checkbox';
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.name = 'domain';
+                input.value = d;
+                
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(` ${d.toUpperCase()}`));
+                domainContainer.appendChild(label);
+            });
         }
 
         function closeModal() {
@@ -376,23 +385,61 @@
 
         function renderItems(items, containerId) {
             const container = document.getElementById(containerId);
-            container.innerHTML = items.length === 0 ? '<p style="color: var(--text-dim); text-align: center; grid-column: 1/-1;">No entries found. Add your first one!</p>' : '';
+            if (items.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; grid-column: 1/-1;">No entries found. Add your first one!</p>';
+                return;
+            }
+            container.innerHTML = '';
 
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'item-card animate-fade';
+                
+                const btn = document.createElement('button');
+                btn.style.cssText = 'position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.1); color: #ff4444; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;';
+                btn.textContent = '×';
+                btn.onclick = () => deleteItem(containerId === 'projectList' ? 'projects' : 'certifications', item.id);
+                div.appendChild(btn);
+
+                const h4 = document.createElement('h4');
+                h4.style.cssText = 'margin-bottom: 0.5rem; padding-right: 20px;';
+                h4.textContent = item.description;
+                div.appendChild(h4);
+
+                const domainsDiv = document.createElement('div');
+                item.domains.forEach(d => {
+                    const span = document.createElement('span');
+                    span.className = 'domain-tag';
+                    span.textContent = d;
+                    domainsDiv.appendChild(span);
+                });
+                div.appendChild(domainsDiv);
+
+                const footer = document.createElement('div');
+                footer.style.cssText = 'margin-top: 1rem; font-size: 0.85rem;';
+                
                 const link = item.github_link || item.certificate_link;
-                div.innerHTML = `
-                    <button onclick="deleteItem('${containerId === 'projectList' ? 'projects' : 'certifications'}', ${item.id})" style="position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.1); color: #ff4444; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">&times;</button>
-                    <h4 style="margin-bottom: 0.5rem; padding-right: 20px;">${item.description}</h4>
-                    <div>
-                        ${item.domains.map(d => `<span class="domain-tag">${d}</span>`).join('')}
-                    </div>
-                    <div style="margin-top: 1rem; font-size: 0.85rem;">
-                        ${link ? `<a href="${link}" target="_blank" style="color: var(--primary);">View Link</a>` : '<span style="color: var(--text-dim);">No Link</span>'}
-                        <span style="float: right; color: var(--text-dim);">${new Date(item.created_at).toLocaleDateString()}</span>
-                    </div>
-                `;
+                if (link) {
+                    const a = document.createElement('a');
+                    a.href = link;
+                    a.target = '_blank';
+                    a.style.color = 'var(--primary)';
+                    a.textContent = 'View Link';
+                    footer.appendChild(a);
+                } else {
+                    const span = document.createElement('span');
+                    span.style.color = 'var(--text-dim)';
+                    span.textContent = 'No Link';
+                    footer.appendChild(span);
+                }
+
+                const dateSpan = document.createElement('span');
+                dateSpan.style.float = 'right';
+                dateSpan.style.color = 'var(--text-dim)';
+                dateSpan.textContent = new Date(item.created_at).toLocaleDateString();
+                footer.appendChild(dateSpan);
+
+                div.appendChild(footer);
                 container.appendChild(div);
             });
         }
