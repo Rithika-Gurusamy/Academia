@@ -86,14 +86,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    username: str = payload.get("sub")
-    if username is None:
+    user_id: int = payload.get("user_id")
+    if user_id is None:
         raise HTTPException(
             status_code=401,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=401,
@@ -147,7 +147,11 @@ def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
     if not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={
+        "sub": user.username,
+        "user_id": user.id,
+        "role": user.role
+    })
 
     register_no = None
     if data.role == "student":
@@ -159,21 +163,20 @@ def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "role": user.role,
-        "user_id": user.id,
         "register_no": register_no
     }
 
 @app.post("/student/profile")
 def create_student_profile(
-    user_id: int, 
     student_in: schemas.StudentCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if current_user.id != user_id and current_user.role != "faculty":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Only students can create their OWN profile
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can create profiles.")
 
-    user_existing = db.query(models.Student).filter(models.Student.user_id == user_id).first()
+    user_existing = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
     if user_existing:
         raise HTTPException(status_code=400, detail="You already have a profile.")
 
@@ -184,7 +187,7 @@ def create_student_profile(
 
     try:
         new_student = models.Student(**student_in.model_dump())
-        new_student.user_id = user_id
+        new_student.user_id = current_user.id
         db.add(new_student)
         db.commit()
         db.refresh(new_student)
@@ -274,58 +277,34 @@ def get_student_list(
     return query.order_by(Student.register_no).all()
 
 @app.get("/student/profile/{register_no}")
-def get_student_profile(register_no: str, user_id: Optional[int] = Query(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if user_id is not None:
-        if current_user.id != user_id and current_user.role != "faculty":
-            raise HTTPException(status_code=403, detail="Not authorized")
-
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if user and user.role == "student":
-            # Check if this user already has a DIFFERENT profile saved
-            user_profile = db.query(models.Student).filter(models.Student.user_id == user_id).first()
-            if user_profile and user_profile.register_no != register_no:
-                raise HTTPException(status_code=403, detail="Restricted: You have already saved your data under your own register number.")
-
+def get_student_profile(register_no: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     student = db.query(Student).filter(Student.register_no == register_no).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    if user_id is not None:
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if user and user.role == "student":
-            if student.user_id is not None and student.user_id != user_id:
-                raise HTTPException(status_code=403, detail="Restricted: You cannot view someone else's profile.")
-    elif current_user.role == "student":
-        if student.user_id is not None and student.user_id != current_user.id:
+    # Faculty can see everything. Students can only see their own profile.
+    if current_user.role == "student":
+        if student.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Restricted: You cannot view someone else's profile.")
-
+    
     return student
 
 @app.put("/student/profile/{register_no}")
 def update_student_profile(
     register_no: str,
     student_update: schemas.StudentUpdate,
-    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if user_id is not None:
-        if current_user.id != user_id and current_user.role != "faculty":
-            raise HTTPException(status_code=403, detail="Not authorized")
 
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
 
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    if user_id is not None:
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if user and user.role == "student":
-            if student.user_id is not None and student.user_id != user_id:
-                raise HTTPException(status_code=403, detail="Restricted: You cannot update someone else's profile.")
-    elif current_user.role == "student":
-        if student.user_id is not None and student.user_id != current_user.id:
+    if current_user.role == "student":
+        if student.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Restricted: You cannot update someone else's profile.")
 
     # Update only provided fields
