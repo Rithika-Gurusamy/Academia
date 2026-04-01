@@ -10,7 +10,8 @@ from typing import Optional, List
 from models import User
 from models import Student
 from datetime import date
-from auth import hash_password, verify_password
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from auth import hash_password, verify_password, create_access_token, decode_access_token
 from fastapi.middleware.cors import CORSMiddleware
 import random
 import time
@@ -75,6 +76,33 @@ def get_db():
     finally:
         db.close()
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
 @app.post("/signup")
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if user.role not in ["student", "faculty"]:
@@ -110,7 +138,7 @@ class LoginRequest(BaseModel):
     role: str
 
 @app.post("/login")
-def login(data: LoginRequest, db: Session = Depends(get_db)):
+def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == data.username, User.role == data.role).first()
 
     if not user:
@@ -119,6 +147,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    access_token = create_access_token(data={"sub": user.username})
+
     register_no = None
     if data.role == "student":
         student = db.query(models.Student).filter(models.Student.user_id == user.id).first()
@@ -126,14 +156,23 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             register_no = student.register_no
 
     return {
-        "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "role": user.role,
         "user_id": user.id,
         "register_no": register_no
     }
 
 @app.post("/student/profile")
-def create_student_profile(user_id: int, student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
+def create_student_profile(
+    user_id: int, 
+    student_in: schemas.StudentCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if current_user.id != user_id and current_user.role != "faculty":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     user_existing = db.query(models.Student).filter(models.Student.user_id == user_id).first()
     if user_existing:
         raise HTTPException(status_code=400, detail="You already have a profile.")
@@ -175,8 +214,11 @@ def get_student_list(
     cert_domain: Optional[List[str]] = Query(None),
     has_projects: Optional[bool] = None,
     has_certifications: Optional[bool] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
+    if current_user.role != "faculty":
+        raise HTTPException(status_code=403, detail="Not authorized. Faculty only.")
     query = db.query(Student)
 
     # Register Number Range
@@ -232,8 +274,11 @@ def get_student_list(
     return query.order_by(Student.register_no).all()
 
 @app.get("/student/profile/{register_no}")
-def get_student_profile(register_no: str, user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
+def get_student_profile(register_no: str, user_id: Optional[int] = Query(None), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if user_id is not None:
+        if current_user.id != user_id and current_user.role != "faculty":
+            raise HTTPException(status_code=403, detail="Not authorized")
+
         user = db.query(models.User).filter(models.User.id == user_id).first()
         if user and user.role == "student":
             # Check if this user already has a DIFFERENT profile saved
@@ -251,6 +296,9 @@ def get_student_profile(register_no: str, user_id: Optional[int] = Query(None), 
         if user and user.role == "student":
             if student.user_id is not None and student.user_id != user_id:
                 raise HTTPException(status_code=403, detail="Restricted: You cannot view someone else's profile.")
+    elif current_user.role == "student":
+        if student.user_id is not None and student.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Restricted: You cannot view someone else's profile.")
 
     return student
 
@@ -259,8 +307,13 @@ def update_student_profile(
     register_no: str,
     student_update: schemas.StudentUpdate,
     user_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
+    if user_id is not None:
+        if current_user.id != user_id and current_user.role != "faculty":
+            raise HTTPException(status_code=403, detail="Not authorized")
+
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
 
     if not student:
@@ -271,6 +324,9 @@ def update_student_profile(
         if user and user.role == "student":
             if student.user_id is not None and student.user_id != user_id:
                 raise HTTPException(status_code=403, detail="Restricted: You cannot update someone else's profile.")
+    elif current_user.role == "student":
+        if student.user_id is not None and student.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Restricted: You cannot update someone else's profile.")
 
     # Update only provided fields
     update_data = student_update.model_dump(exclude_unset=True)
@@ -405,10 +461,13 @@ def retrieve_username(data: OTPRequest, db: Session = Depends(get_db)):
 
 # Project & Certification Features
 @app.post("/student/{register_no}/projects")
-def add_project(register_no: str, project_in: schemas.ProjectCreate, db: Session = Depends(get_db)):
+def add_project(register_no: str, project_in: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+        
+    if current_user.role == "student" and student.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     new_project = models.Project(
         student_id=student.id,
@@ -432,17 +491,23 @@ def add_project(register_no: str, project_in: schemas.ProjectCreate, db: Session
     return new_project
 
 @app.get("/student/{register_no}/projects")
-def get_projects(register_no: str, db: Session = Depends(get_db)):
+def get_projects(register_no: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+        
+    if current_user.role == "student" and student.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     return db.query(models.Project).filter(models.Project.student_id == student.id).all()
 
 @app.post("/student/{register_no}/certifications")
-def add_certification(register_no: str, cert_in: schemas.CertificationCreate, db: Session = Depends(get_db)):
+def add_certification(register_no: str, cert_in: schemas.CertificationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+        
+    if current_user.role == "student" and student.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     new_cert = models.Certification(
         student_id=student.id,
@@ -466,14 +531,19 @@ def add_certification(register_no: str, cert_in: schemas.CertificationCreate, db
     return new_cert
 
 @app.get("/student/{register_no}/certifications")
-def get_certifications(register_no: str, db: Session = Depends(get_db)):
+def get_certifications(register_no: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     student = db.query(models.Student).filter(models.Student.register_no == register_no).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+        
+    if current_user.role == "student" and student.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     return db.query(models.Certification).filter(models.Certification.student_id == student.id).all()
 
 @app.get("/faculty/activity-logs")
-def get_activity_logs(db: Session = Depends(get_db)):
+def get_activity_logs(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "faculty":
+        raise HTTPException(status_code=403, detail="Not authorized. Faculty only.")
     logs = db.query(
         models.ActivityLog, 
         models.Student.name.label("student_name"),
@@ -505,7 +575,9 @@ def get_activity_logs(db: Session = Depends(get_db)):
     return result
 
 @app.post("/faculty/activity-logs/{log_id}/seen")
-def mark_log_seen(log_id: int, db: Session = Depends(get_db)):
+def mark_log_seen(log_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "faculty":
+        raise HTTPException(status_code=403, detail="Not authorized. Faculty only.")
     log = db.query(models.ActivityLog).filter(models.ActivityLog.id == log_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
@@ -514,20 +586,28 @@ def mark_log_seen(log_id: int, db: Session = Depends(get_db)):
     return {"message": "Marked as seen"}
 
 @app.delete("/student/projects/{project_id}")
-def delete_project(project_id: int, db: Session = Depends(get_db)):
+def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    student = db.query(models.Student).filter(models.Student.id == project.student_id).first()
+    if current_user.role == "student" and (not student or student.user_id != current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
     db.query(models.ActivityLog).filter(models.ActivityLog.activity_type == "project_added", models.ActivityLog.reference_id == project_id).delete()
     db.delete(project)
     db.commit()
     return {"message": "Project deleted"}
 
 @app.delete("/student/certifications/{cert_id}")
-def delete_certification(cert_id: int, db: Session = Depends(get_db)):
+def delete_certification(cert_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     cert = db.query(models.Certification).filter(models.Certification.id == cert_id).first()
     if not cert:
         raise HTTPException(status_code=404, detail="Certification not found")
+        
+    student = db.query(models.Student).filter(models.Student.id == cert.student_id).first()
+    if current_user.role == "student" and (not student or student.user_id != current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
     db.query(models.ActivityLog).filter(models.ActivityLog.activity_type == "cert_added", models.ActivityLog.reference_id == cert_id).delete()
     db.delete(cert)
     db.commit()

@@ -68,6 +68,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (response.ok) {
+            localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('username', username);
             localStorage.setItem('role', data.role);
             localStorage.setItem('user_id', data.user_id);

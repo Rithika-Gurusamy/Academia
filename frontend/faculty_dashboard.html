@@ -357,7 +357,12 @@
 
         async function loadStudents(params = "") {
             try {
-                const response = await fetch(`${API_URL}/student/list${params}`);
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_URL}/student/list${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.ok) {
                     allStudents = await response.json();
                     renderStudents(allStudents);
@@ -417,7 +422,17 @@
 
         async function fetchLogs() {
             try {
-                const response = await fetch(`${API_URL}/faculty/activity-logs`);
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('Session expired. Please login again.');
+                    logout();
+                    return;
+                }
+                const response = await fetch(`${API_URL}/faculty/activity-logs`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.ok) {
                     const logs = await response.json();
                     renderLogs(logs);
@@ -473,7 +488,13 @@
 
         async function dismissLog(id) {
             try {
-                const response = await fetch(`${API_URL}/faculty/activity-logs/${id}/seen`, { method: 'POST' });
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_URL}/faculty/activity-logs/${id}/seen`, { 
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.ok) {
                     fetchLogs(); // Refresh list
                 }

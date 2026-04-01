@@ -252,7 +252,17 @@
 
             try {
                 // Pass user_id to restrict cross-profile access
-                const response = await fetch(`${API_URL}/student/profile/${regNo}?user_id=${userId}`);
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('Session expired. Please login again.');
+                    logout();
+                    return;
+                }
+                const response = await fetch(`${API_URL}/student/profile/${regNo}?user_id=${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
 
                 if (response.ok) {
                     window.location.href = `profile.html?reg=${regNo}`;
@@ -330,9 +340,13 @@
             };
 
             try {
+                const token = localStorage.getItem('access_token');
                 const response = await fetch(`${API_URL}/student/${regNo}/${path}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -352,7 +366,12 @@
             if (!regNo) return;
 
             try {
-                const response = await fetch(`${API_URL}/student/${regNo}/${path}`);
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_URL}/student/${regNo}/${path}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (response.ok) {
                     const data = await response.json();
                     renderItems(data, path === 'projects' ? 'projectList' : 'certList');
@@ -389,8 +408,12 @@
             if (!confirm("Are you sure you want to delete this entry?")) return;
 
             try {
+                const token = localStorage.getItem('access_token');
                 const response = await fetch(`${API_URL}/student/${path}/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
 
                 if (response.ok) {
