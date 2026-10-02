@@ -5,3 +5,4 @@ __pycache__/
 backend/out.txt
 backend/out_utf8.txt
 clean_dump.sql
+AI-feature/

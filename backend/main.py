@@ -132,17 +132,12 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
         db.rollback()
         print(f"SIGNUP ERROR: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-    role: str
-
 @app.post("/login")
 def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == data.username, User.role == data.role).first()
+    user = db.query(User).filter(User.username == data.username).first()
 
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials or role")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -154,7 +149,7 @@ def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
     })
 
     register_no = None
-    if data.role == "student":
+    if user.role == "student":
         student = db.query(models.Student).filter(models.Student.user_id == user.id).first()
         if student:
             register_no = student.register_no

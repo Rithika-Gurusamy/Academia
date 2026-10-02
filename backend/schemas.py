@@ -5,7 +5,6 @@ from datetime import date, datetime
 class LoginRequest(BaseModel):
     username: str
     password: str
-    role: str
 
 class UserBase(BaseModel):
     username: str
