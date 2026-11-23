@@ -233,6 +233,19 @@
             if (inputEl) inputEl.value = savedReg;
         }
 
+        // --- Auto-redirect if student already has a profile (Instagram-style) ---
+        (async function autoLoadProfile() {
+            const role = localStorage.getItem('role');
+            const hasProfile = localStorage.getItem('has_profile') === '1';
+            const regNo = localStorage.getItem('tempRegNo');
+
+            if (role === 'student' && hasProfile && regNo) {
+                // Profile exists: go directly to it without any user interaction
+                window.location.href = `profile.html?reg=${regNo}&src=dashboard`;
+                return;
+            }
+        })();
+
         async function checkProfile() {
             const regNo = document.getElementById('regNoInput').value;
             const token = localStorage.getItem('access_token');

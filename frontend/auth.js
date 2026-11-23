@@ -73,10 +73,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             if (data.register_no) {
                 localStorage.setItem('tempRegNo', data.register_no);
             }
-            alert("Login Successful!");
+            // Store whether this student already has a profile
+            localStorage.setItem('has_profile', data.has_profile ? '1' : '0');
 
             if (data.role === 'faculty') {
                 window.location.href = "faculty_dashboard.html";
+            } else if (data.role === 'student' && data.has_profile && data.register_no) {
+                // Student already has profile — go straight to it, like Instagram
+                window.location.href = `profile.html?reg=${data.register_no}&src=login`;
             } else {
                 window.location.href = "dashboard.html";
             }
