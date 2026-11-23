@@ -513,7 +513,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 <div align="center">
 
-**Built with ❤️ by [Rithika Gurusamy](https://github.com/Rithika-Gurusamy)**
+**Built by [Rithika Gurusamy](https://github.com/Rithika-Gurusamy)**
 
 *Academia — Simplifying student data management for educational institutions*
 
