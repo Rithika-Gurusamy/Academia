@@ -103,6 +103,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
+@app.get("/student/me")
+def get_my_profile(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Returns the profile of the currently logged-in student
+    without needing a register number in the URL.
+    Returns 404 if no profile has been created yet.
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students have a profile here.")
+
+    student = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="No profile found. Please create your profile.")
+    return student
+
+
 @app.post("/signup")
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if user.role not in ["student", "faculty"]:
@@ -154,11 +173,14 @@ def login(data: schemas.LoginRequest, db: Session = Depends(get_db)):
         if student:
             register_no = student.register_no
 
+    has_profile = register_no is not None
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "role": user.role,
-        "register_no": register_no
+        "register_no": register_no,
+        "has_profile": has_profile
     }
 
 @app.post("/student/profile")
