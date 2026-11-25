@@ -141,28 +141,48 @@
 
         <!-- Profile Section -->
         <section id="profile-section" class="search-card animate-fade">
-            <h1 class="title">My Student Profile</h1>
-            <p class="subtitle">Enter your Register Number to view or update your profile</p>
 
-            <div style="max-width: 400px; margin: 0 auto;">
-                <div class="form-group">
-                    <input type="text" id="regNoInput" placeholder="Enter Register Number" style="text-align: center;">
-                </div>
-                <!-- Error msg for unauthorized -->
-                <div id="unauthorizedMsg" style="color: #ff4d4d; margin-top: 10px;" class="hidden"></div>
-
-                <button class="btn btn-primary" onclick="checkProfile()" style="margin-top: 10px;">View My
-                    Details</button>
+            <!-- State: loading -->
+            <div id="profileLoading" style="text-align:center; padding: 2rem; color: var(--text-dim);">
+                <p>Loading your profile...</p>
             </div>
 
-            <!-- No Profile Message -->
-            <div id="noProfileMsg" class="hidden text-center animate-fade" style="margin-top: 2rem;">
+            <!-- State: has profile — inline summary card -->
+            <div id="profileCard" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 class="title" style="margin: 0;" id="profileCardName">—</h1>
+                        <p style="color: var(--text-dim); margin: 0.25rem 0 0; font-size: 0.9rem;" id="profileCardSub">—</p>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" style="width: auto;" onclick="goToEditProfile()">Edit Profile</button>
+                        <button class="btn btn-outline" style="width: auto;" onclick="goToFullProfile()">View Full Profile</button>
+                    </div>
+                </div>
+
+                <!-- Quick info grid -->
+                <div id="profileInfoGrid" style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                    gap: 1rem;
+                    background: var(--bg-card, rgba(255,255,255,0.6));
+                    border: 1px solid var(--glass-border);
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                ">
+                    <!-- filled by JS -->
+                </div>
+            </div>
+
+            <!-- State: no profile yet -->
+            <div id="noProfileMsg" class="hidden text-center animate-fade">
                 <div class="glass-card" style="max-width: 100%;">
-                    <p>No profile data found for this register number.</p>
-                    <button class="btn btn-primary" style="margin-top: 1rem;"
-                        onclick="redirectToProfile('create')">Store My Details</button>
+                    <p style="margin-bottom: 0.5rem; font-size: 1.1rem;">👋 You haven't stored your details yet.</p>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Fill in your student profile once and it'll appear here every time you log in.</p>
+                    <button class="btn btn-primary" style="margin-top: 1.25rem;" onclick="redirectToProfile('create')">Store My Details</button>
                 </div>
             </div>
+
         </section>
 
         <!-- Projects Section -->
@@ -227,63 +247,86 @@
         document.getElementById('welcomeTxt').innerText = `Welcome, ${localStorage.getItem('username') || 'Student'}!`;
         document.getElementById('avatarTxt').innerText = (localStorage.getItem('username') || 'U')[0].toUpperCase();
 
-        const savedReg = localStorage.getItem('tempRegNo');
-        if (savedReg) {
-            const inputEl = document.getElementById('regNoInput');
-            if (inputEl) inputEl.value = savedReg;
-        }
-
-        // --- Auto-redirect if student already has a profile (Instagram-style) ---
-        (async function autoLoadProfile() {
-            const role = localStorage.getItem('role');
-            const hasProfile = localStorage.getItem('has_profile') === '1';
-            const regNo = localStorage.getItem('tempRegNo');
-
-            if (role === 'student' && hasProfile && regNo) {
-                // Profile exists: go directly to it without any user interaction
-                window.location.href = `profile.html?reg=${regNo}&src=dashboard`;
+        // ── Auto-load profile inline on the Profile tab ──────────────────────
+        (async function loadMyProfile() {
+            const token = localStorage.getItem('access_token');
+            const role  = localStorage.getItem('role');
+            if (role !== 'student' || !token) {
+                document.getElementById('profileLoading').classList.add('hidden');
                 return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/student/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                document.getElementById('profileLoading').classList.add('hidden');
+
+                if (res.ok) {
+                    const d = await res.json();
+                    // Store reg no for projects/certs tabs
+                    if (d.register_no) localStorage.setItem('tempRegNo', d.register_no);
+                    localStorage.setItem('has_profile', '1');
+                    renderProfileCard(d);
+                } else if (res.status === 404) {
+                    document.getElementById('noProfileMsg').classList.remove('hidden');
+                } else {
+                    document.getElementById('noProfileMsg').classList.remove('hidden');
+                }
+            } catch (err) {
+                document.getElementById('profileLoading').classList.add('hidden');
+                document.getElementById('noProfileMsg').classList.remove('hidden');
             }
         })();
 
-        async function checkProfile() {
-            const regNo = document.getElementById('regNoInput').value;
-            const token = localStorage.getItem('access_token');
-            if (!token) {
-                alert("Please login first.");
-                return logout();
-            }
-            if (!regNo) {
-                alert("Please enter a register number");
-                return;
-            }
+        function renderProfileCard(data) {
+            // Quick-info fields to show in the summary grid
+            const fields = [
+                { label: 'Register No',   key: 'register_no' },
+                { label: 'Roll No',       key: 'roll_no' },
+                { label: 'Mobile',        key: 'mobile_no' },
+                { label: 'Gender',        key: 'gender' },
+                { label: 'Blood Group',   key: 'blood_group' },
+                { label: 'Scholar Type',  key: 'scholar_type' },
+                { label: 'Branch',        key: 'branch_specialization' },
+                { label: 'Course',        key: 'course_type' },
+                { label: 'Year of Join',  key: 'academic_year_of_joining' },
+                { label: 'Community',     key: 'community' },
+                { label: 'College Email', key: 'email_college' },
+                { label: 'Personal Email',key: 'email_personal' },
+            ];
 
-            localStorage.setItem('tempRegNo', regNo);
-            const msgEl = document.getElementById('unauthorizedMsg');
-            msgEl.classList.add('hidden');
-            document.getElementById('noProfileMsg').classList.add('hidden');
+            document.getElementById('profileCardName').innerText = data.name || 'Student';
+            document.getElementById('profileCardSub').innerText =
+                [data.branch_specialization, data.course_type ? data.course_type.toUpperCase() : '']
+                .filter(Boolean).join(' · ') || data.register_no || '';
 
-            try {
-                const response = await fetch(`${API_URL}/student/profile/${regNo}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+            const grid = document.getElementById('profileInfoGrid');
+            grid.innerHTML = '';
+            fields.forEach(({ label, key }) => {
+                const val = data[key];
+                if (!val) return; // skip empty fields
+                const cell = document.createElement('div');
+                cell.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+                cell.innerHTML = `
+                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">${label}</span>
+                    <span style="font-size:0.95rem;font-weight:500;">${val}</span>
+                `;
+                grid.appendChild(cell);
+            });
 
-                if (response.ok) {
-                    window.location.href = `profile.html?reg=${regNo}`;
-                } else if (response.status === 404) {
-                    document.getElementById('noProfileMsg').classList.remove('hidden');
-                } else if (response.status === 403) {
-                    const data = await response.json();
-                    msgEl.innerText = data.detail || "Restricted: You cannot view someone else's profile.";
-                    msgEl.classList.remove('hidden');
-                } else {
-                    alert("Error checking profile");
-                }
-            } catch (err) {
-                alert("Server error connecting to backend");
-            }
+            document.getElementById('profileCard').classList.remove('hidden');
+        }
+
+        function goToFullProfile() {
+            const regNo = localStorage.getItem('tempRegNo');
+            if (regNo) window.location.href = `profile.html?reg=${regNo}`;
+        }
+
+        function goToEditProfile() {
+            const regNo = localStorage.getItem('tempRegNo');
+            if (regNo) window.location.href = `profile.html?reg=${regNo}&mode=edit`;
         }
 
         function switchTab(tab) {
